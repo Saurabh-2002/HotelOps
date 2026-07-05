@@ -1,0 +1,191 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum SubscriptionTier {
+  BASIC
+  PRO
+  ENTERPRISE
+}
+
+enum UserRole {
+  SUPER_ADMIN // System admins only
+  OWNER
+  MANAGER
+  FRONT_DESK
+  HOUSEKEEPING
+  RESTAURANT
+  ACCOUNTANT
+}
+
+enum BookingStatus {
+  RESERVED
+  CHECKED_IN
+  CHECKED_OUT
+  CANCELLED
+}
+
+enum FolioStatus {
+  OPEN
+  SETTLED
+}
+
+model Tenant {
+  id                String   @id @default(uuid())
+  name              String
+  gstin             String?
+  subscriptionTier  SubscriptionTier @default(BASIC)
+  activeModules     String[] // e.g. ["RESTAURANT", "HOUSEKEEPING"]
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  users             User[]
+  rooms             Room[]
+  bookings          Booking[]
+  guestRecords      GuestRecord[]
+  folios            Folio[]
+  menuItems         MenuItem[]
+  posOrders         PosOrder[]
+}
+
+model User {
+  id             String   @id @default(uuid())
+  tenantId       String?  // Nullable for Super-Admins
+  tenant         Tenant?  @relation(fields: [tenantId], references: [id])
+  name           String
+  email          String   @unique
+  hashedPassword String
+  role           UserRole
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model Room {
+  id          String   @id @default(uuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  roomNumber  String
+  roomType    String
+  floor       String?
+  baseRate    Decimal  @db.Decimal(10, 2)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  bookings    Booking[]
+
+  @@unique([tenantId, roomNumber])
+}
+
+model Booking {
+  id             String   @id @default(uuid())
+  tenantId       String
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+  roomId         String
+  room           Room     @relation(fields: [roomId], references: [id])
+  checkInDate    DateTime @db.Date
+  checkOutDate   DateTime @db.Date
+  status         BookingStatus @default(RESERVED)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  guestRecords   GuestRecord[]
+  folios         Folio[]
+  posOrders      PosOrder[]
+
+  @@index([tenantId])
+}
+
+model GuestRecord {
+  id                  String   @id @default(uuid())
+  tenantId            String
+  tenant              Tenant   @relation(fields: [tenantId], references: [id])
+  bookingId           String
+  booking             Booking  @relation(fields: [bookingId], references: [id])
+  fullName            String
+  idType              String
+  idNumber            String
+  encryptedFrroData   String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model Folio {
+  id          String   @id @default(uuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  bookingId   String
+  booking     Booking  @relation(fields: [bookingId], references: [id])
+  totalAmount Decimal  @db.Decimal(10, 2)
+  cgst        Decimal  @default(0) @db.Decimal(10, 2)
+  sgst        Decimal  @default(0) @db.Decimal(10, 2)
+  status      FolioStatus @default(OPEN)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+enum PosOrderStatus {
+  KOT_PRINTED
+  SERVED
+  BILLED
+  CANCELLED
+}
+
+model MenuItem {
+  id          String   @id @default(uuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  name        String
+  category    String
+  price       Decimal  @db.Decimal(10, 2)
+  isAvailable Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  orderItems  PosOrderItem[]
+
+  @@index([tenantId])
+}
+
+model PosOrder {
+  id          String   @id @default(uuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  bookingId   String?  // Optional: Link to a room/booking
+  booking     Booking? @relation(fields: [bookingId], references: [id])
+  status      PosOrderStatus @default(KOT_PRINTED)
+  totalAmount Decimal  @default(0) @db.Decimal(10, 2)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  items       PosOrderItem[]
+
+  @@index([tenantId])
+}
+
+model PosOrderItem {
+  id          String   @id @default(uuid())
+  orderId     String
+  order       PosOrder @relation(fields: [orderId], references: [id])
+  menuItemId  String
+  menuItem    MenuItem @relation(fields: [menuItemId], references: [id])
+  quantity    Int
+  unitPrice   Decimal  @db.Decimal(10, 2)
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  @@index([orderId])
+}
