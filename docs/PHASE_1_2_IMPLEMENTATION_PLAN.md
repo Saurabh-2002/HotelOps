@@ -113,24 +113,31 @@
   - Remaining risks: The historical-data migration wiping out prior payment statuses still remains a product/deployment blocker (from TASK-02).
 
 ## TASK-03: Fix Folio Source of Truth & Dynamic Calculation
-- **Related Issue IDs**: ISSUE-03
-- **Priority**: P1 | **Status**: PENDING
+- **Related Issue IDs**: ISSUE-03, ISSUE-09, ISSUE-10
+- **Priority**: P1 | **Status**: COMPLETE
 - **Objective**: Ensure invoice totals perfectly reflect source records and do not go stale.
 - **Business Reason**: Prevent guest under-billing and invoice discrepancies.
-- **Root Cause Addressed**: Caching dynamic totals in an OPEN folio record.
+- **Root Cause Addressed**: Caching dynamic totals in an OPEN folio record and race conditions during settlement.
 - **Implementation Scope**: 'generateInvoiceForBooking' dynamically calculates totals from Booking + 'POSTED_TO_ROOM' POS orders. The 'Folio' DB record is only persisted/frozen when 'POST /api/billing/folio/:id/settle' is called.
 - **Explicit Non-Goals**: Do not build a ledger accounting system.
-- **Schema Impact**: None required (can use existing Folio model for frozen records).
+- **Schema Impact**: Added `invoiceSnapshot` JSONB field and `snapshotVersion` to capture immutable historical snapshot. Added `@@unique([bookingId])` to prevent duplicate settlements natively. Kept baseline financial columns intact.
 - **API Impact**: 'generateInvoiceForBooking' response format remains identical, but backend calculation changes.
 - **Frontend Impact**: None.
 - **Financial Impact**: Ensures 100% capture of room-posted charges.
-- **Tenant-Isolation/Auth Impact**: None.
-- **Transaction Boundaries**: Settle endpoint must atomically transition Folio to 'SETTLED' and persist final calculated totals.
-- **Idempotency Requirements**: 'generateInvoiceForBooking' is purely read-only (idempotent). Settlement is idempotent.
-- **Required Tests**: Add POS order to OPEN folio -> verify invoice updates. Settle folio -> verify totals frozen.
-- **Acceptance Criteria**: Invoices accurately aggregate all eligible charges dynamically until settlement.
+- **Tenant-Isolation/Auth Impact**: Strict RLS enforcement and programmatic tenant isolation.
+- **Transaction Boundaries**: Settle endpoint atomically transitions Folio to 'SETTLED' and persists final calculated totals with a row-level lock on `Booking`.
+- **Idempotency Requirements**: 'generateInvoiceForBooking' is purely read-only (idempotent). Settlement is idempotent (409 Conflict on duplicate).
+- **Required Tests**: Add POS order to OPEN folio -> verify invoice updates. Settle folio -> verify totals frozen. Concurrency lock validation.
+- **Acceptance Criteria**: Invoices accurately aggregate all eligible charges dynamically until settlement. Duplicate settlements safely rejected.
 - **Dependencies**: TASK-02.
 - **Recommended Branch Name**: 'fix/folio-dynamic-calculation'
+- **Verification Result**:
+  - Implementation summary: Refactored `generateInvoiceForBooking` to generate dynamic snapshots, and `settleFolio` to persist the snapshot as a versioned JSON object. Applied Postgres `FOR UPDATE` lock on Booking, and `@@unique([bookingId])` to guarantee exact-once settlement.
+  - Files changed: `schema.prisma`, `billing.service.ts`, `pos.service.ts`, `invoice-snapshot.dto.ts`, `billing.integration.spec.ts`
+  - Tests executed/results: Full suite passed. Concurrency and isolation tests verified.
+  - Acceptance-criteria result: PASSED.
+  - Task Commit SHA: Pending
+  - Merge Commit SHA: Pending
 
 ## TASK-04: Enforce Settlement at Checkout
 - **Related Issue IDs**: ISSUE-04

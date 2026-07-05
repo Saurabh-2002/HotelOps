@@ -81,7 +81,7 @@
 
 ## ISSUE-03: Folio Aggregates Are Stale and Non-Deterministic
 - **Priority**: P1
-- **Status**: OPEN
+- **Status**: COMPLETE
 - **Description**: Folios act as poorly-cached aggregates. 'generateInvoiceForBooking' calculates totals dynamically, but if an 'OPEN' folio exists, it returns the stale database row instead of updating it.
 - **Code Evidence**: 'billing.service.ts' returns 'existingFolio' without recalculating or updating totals.
 - **Root Cause**: Invoice generation acts as a one-time snapshot rather than a dynamic view of source-of-truth records.
@@ -93,6 +93,35 @@
 - **Files/Modules**: 'billing.service.ts'
 - **Required Tests**: Folio dynamic calculation with new POS charges, freeze on settlement.
 - **Explicit Acceptance Criteria**: Viewing an invoice dynamically aggregates all eligible charges. Settling the folio freezes these totals immutably.
+- **Verification Result**: 
+  - Implementation summary: Invoice reads for OPEN folios now dynamically calculate the exact breakdown at request time. Settlement creates a permanent immutable database row.
+  - Tests added: Full integration test suite in `billing.integration.spec.ts`.
+  - Tests executed/results: Passed.
+  - Acceptance-criteria result: PASSED.
+
+## ISSUE-09: Incomplete Historical Invoice Snapshot
+- **Priority**: P0
+- **Status**: COMPLETE
+- **Description**: Migrations were applied destroying historical aggregate columns (like roomSubtotal, etc.) causing legacy invoices to lose resolution, but the replacement JSON snapshot approach was not implemented to capture the true immutable state of the Folio.
+- **Root Cause**: Premature deletion of historical columns and lack of JSON snapshot persistence upon settlement.
+- **Operational Impact**: Cannot reproduce past settled invoices exactly as they appeared.
+- **Financial Impact**: Audit failure.
+- **Proposed Solution**: Implement `invoiceSnapshot` as JSONB on `Folio`, versioned via `snapshotVersion`.
+- **Files/Modules**: `schema.prisma`, `billing.service.ts`, `invoice-snapshot.dto.ts`
+- **Verification Result**:
+  - Implementation summary: Folio now has `invoiceSnapshot` JSONB. Billing service writes exact view model to this snapshot at settlement. Re-reading a settled folio returns this frozen JSON.
+  - Acceptance-criteria result: PASSED.
+
+## ISSUE-10: Duplicate/concurrent settlement returns 201 instead of deterministic 409 Conflict
+- **Priority**: P2
+- **Status**: COMPLETE
+- **Description**: Concurrent requests to settle the same folio could result in multiple successful responses or race conditions.
+- **Root Cause**: No row locks on `Booking` and no database-level constraint preventing duplicate `Folio` rows.
+- **Proposed Solution**: Add `@@unique([bookingId])` on `Folio`, use Postgres `FOR UPDATE` lock on `Booking` during settlement, and map Prisma P2002 to `409 Conflict`.
+- **Files/Modules**: `schema.prisma`, `billing.service.ts`
+- **Verification Result**:
+  - Implementation summary: Atomic shared locks and database-level constraints now enforce exact-once settlement idempotency.
+  - Acceptance-criteria result: PASSED.
 
 ## ISSUE-04: Checkout Allows Unpaid Folios
 - **Priority**: P1

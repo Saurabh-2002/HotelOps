@@ -116,16 +116,19 @@ export class PosService {
           throw new BadRequestException('bookingId is required for ROOM_POST settlement');
         }
 
-        const booking = await tx.booking.findFirst({
-          where: { id: dto.bookingId, tenantId },
-        });
-
-        if (!booking) {
+        const bookings: any[] = await tx.$queryRaw`SELECT id, status FROM "Booking" WHERE id = ${dto.bookingId} AND "tenantId" = ${tenantId} FOR UPDATE`;
+        if (bookings.length === 0) {
           throw new NotFoundException(`Booking ${dto.bookingId} not found`);
         }
 
-        if (booking.status !== 'CHECKED_IN') {
-          throw new ConflictException(`Cannot post to room. Booking status is ${booking.status}`);
+        const bookingStatus = bookings[0].status;
+        if (bookingStatus !== 'CHECKED_IN') {
+          throw new ConflictException(`Cannot post to room. Booking status is ${bookingStatus}`);
+        }
+
+        const existingFolio = await tx.folio.findUnique({ where: { bookingId: dto.bookingId } });
+        if (existingFolio && existingFolio.status === 'SETTLED') {
+          throw new ConflictException(`Cannot post to room. Folio is already SETTLED`);
         }
 
         updateData = {
