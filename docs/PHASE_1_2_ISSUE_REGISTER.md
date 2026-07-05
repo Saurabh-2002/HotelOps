@@ -47,7 +47,7 @@
 
 ## ISSUE-06: POS Settlement Concurrency Vulnerability
 - **Priority**: P0
-- **Status**: OPEN
+- **Status**: COMPLETE
 - **Description**: The POS settlement endpoint (`/api/pos/orders/:id/settle`) is vulnerable to concurrent race conditions. Two simultaneous requests can both observe an `UNPAID` status, pass application validation, and both succeed due to the lack of database row locks or conditional update predicates.
 - **Code Evidence**: `pos.service.ts` -> `settleOrder()` reads `paymentStatus` and subsequently calls `tx.posOrder.update({ where: { id } })`.
 - **Root Cause**: Non-atomic application-level read-modify-write pattern running under default Postgres Read Committed isolation.

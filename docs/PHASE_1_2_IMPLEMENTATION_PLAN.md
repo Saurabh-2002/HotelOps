@@ -34,7 +34,7 @@
 
 ## TASK-02: Implement POS Financial Settlement Lifecycle
 - **Related Issue IDs**: ISSUE-02
-- **Priority**: P1 | **Status**: FUNCTIONALLY IMPLEMENTED / BLOCKED FROM FINAL COMPLETION
+- **Priority**: P1 | **Status**: COMPLETE FOR NEW DATA / BLOCKED FOR PRODUCTION DEPLOYMENT
 - **Objective**: Decouple POS kitchen fulfillment from financial settlement.
 - **Business Reason**: Prevent F&B revenue loss and duplicate charging.
 - **Root Cause Addressed**: Overloaded 'status' enum.
@@ -67,7 +67,7 @@
 
 ## TASK-07: Fix POS Settlement Concurrency Defect
 - **Related Issue IDs**: ISSUE-06
-- **Priority**: P0 | **Status**: IMPLEMENTED / PENDING MERGE VERIFICATION
+- **Priority**: P0 | **Status**: COMPLETE
 - **Objective**: Guarantee exactly-once financial finalization under concurrent load.
 - **Business Reason**: Prevent duplicate charges, race conditions, and corrupted folios.
 - **Root Cause Addressed**: Application-level read-modify-write pattern running under default Postgres Read Committed isolation without row locks or conditional updates.
