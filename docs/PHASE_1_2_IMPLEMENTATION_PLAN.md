@@ -67,14 +67,14 @@
 
 ## TASK-07: Fix POS Settlement Concurrency Defect
 - **Related Issue IDs**: ISSUE-06
-- **Priority**: P0 | **Status**: PENDING
+- **Priority**: P0 | **Status**: IMPLEMENTED / PENDING MERGE VERIFICATION
 - **Objective**: Guarantee exactly-once financial finalization under concurrent load.
 - **Business Reason**: Prevent duplicate charges, race conditions, and corrupted folios.
 - **Root Cause Addressed**: Application-level read-modify-write pattern running under default Postgres Read Committed isolation without row locks or conditional updates.
-- **Architecture Decision**: [To be decided in Phase I]
+- **Architecture Decision**: Atomic conditional update using `updateMany` with a predicate `id = targetOrderId AND paymentStatus = 'UNPAID'` and verifying affected row count. This is safe with Prisma and Postgres because RLS policies are applied automatically in the transaction via `withTenant`, and the single UPDATE statement enforces row-level locking natively.
 - **Implementation Scope**: Modify `pos.service.ts` `settleOrder()` to enforce state transition atomically at the database write boundary.
 - **Explicit Non-Goals**: Do not add a full payment ledger. Do not implement Folio logic. Do not modify checkout logic.
-- **Expected Files Affected**: `pos.service.ts`, `pos.service.spec.ts`
+- **Expected Files Affected**: `pos.service.ts`, `pos.concurrency.spec.ts`
 - **Schema Impact**: None.
 - **API Impact**: API response remains the same. Losers in concurrency race receive 409 Conflict.
 - **Financial Impact**: Ensures exact-once semantics for F&B revenue.
@@ -88,6 +88,14 @@
 - **Acceptance Criteria**: Under concurrent load, exactly one settlement request succeeds. Losing requests fail cleanly. No partial state persists.
 - **Dependencies**: TASK-02.
 - **Recommended Branch Name**: 'fix/pos-settlement-concurrency'
+- **Verification Result**:
+  - Implementation summary: Used `updateMany` with explicit `paymentStatus: 'UNPAID'` where clause to leverage Postgres atomic UPDATE row locking.
+  - Files changed: `backend/src/pos/pos.service.ts`, `backend/src/pos/pos.concurrency.spec.ts`
+  - Tests added: 4 explicit race condition suites.
+  - Tests executed/results: 4 concurrency tests pass, complete backend test suite passed (29 tests). 
+  - Runtime results: Confirmed exact-once semantics (1 success, 1 rejection). Last-writer-wins was successfully mitigated.
+  - Acceptance-criteria result: PASSED.
+  - Remaining risks: The historical-data migration wiping out prior payment statuses still remains a product/deployment blocker (from TASK-02).
 
 ## TASK-03: Fix Folio Source of Truth & Dynamic Calculation
 - **Related Issue IDs**: ISSUE-03
