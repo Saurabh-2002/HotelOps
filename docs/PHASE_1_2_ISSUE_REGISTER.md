@@ -2,7 +2,7 @@
 
 ## ISSUE-01: Incorrect Room GST Slab Calculation
 - **Priority**: P0
-- **Status**: OPEN
+- **Status**: IMPLEMENTED / PENDING MERGE VERIFICATION
 - **Description**: GST slab (12% vs 18%) is incorrectly calculated using the total stay amount instead of the daily room rate.
 - **Code Evidence**: 'billing.service.ts' -> 'calculateGst()' is passed 'totalRoomCharge' (Nights × Rate).
 - **Root Cause**: Developer conflated total invoice line item amount with daily tariff boundary.
@@ -20,6 +20,15 @@
   - One-night stay
   - Rounding behavior
 - **Explicit Acceptance Criteria**: The 18% slab is strictly applied only when the single-night room tariff exceeds 7,500.
+- **Verification Result**: 
+  - Actual root cause: 'totalRoomCharge' was used as the slab basis instead of 'roomRate'.
+  - Implementation summary: Added optional 'dailyRate' parameter to 'calculateGst()'. Used it as basis if provided. Updated 'generateInvoiceForBooking' to pass 'roomRate'.
+  - Files changed: 'backend/src/billing/billing.service.ts', 'backend/src/billing/billing.service.spec.ts'
+  - Tests added: 9 jest test cases covering boundary conditions, multi-night stays, and fallback behavior.
+  - Tests executed/results: 9 tests passed.
+  - Acceptance-criteria result: PASSED.
+  - Newly discovered issues: None.
+  - Remaining risks: None.
 
 ## ISSUE-02: POS Orders Lack Explicit Financial Lifecycle
 - **Priority**: P1

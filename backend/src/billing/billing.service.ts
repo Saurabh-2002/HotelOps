@@ -17,8 +17,9 @@ export class BillingService {
   /**
    * Calculates GST based on Indian hotel room tariff slabs.
    */
-  calculateGst(totalAmount: number) {
-    const rate = totalAmount <= 7500 ? GST_RATES.STANDARD : GST_RATES.PREMIUM;
+  calculateGst(totalAmount: number, dailyRate?: number) {
+    const basis = dailyRate !== undefined ? dailyRate : totalAmount;
+    const rate = basis <= 7500 ? GST_RATES.STANDARD : GST_RATES.PREMIUM;
     const cgst = Math.round(totalAmount * rate.cgstRate * 100) / 100;
     const sgst = Math.round(totalAmount * rate.sgstRate * 100) / 100;
     return { cgst, sgst, total: totalAmount + cgst + sgst };
@@ -84,7 +85,7 @@ export class BillingService {
       const nights = Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24)) || 1;
       const roomRate = Number(booking.room.baseRate);
       const totalRoomCharge = roomRate * nights;
-      const roomGst = this.calculateGst(totalRoomCharge);
+      const roomGst = this.calculateGst(totalRoomCharge, roomRate);
 
       // Calculate POS charges
       let totalPosCharge = 0;
