@@ -2,7 +2,7 @@
 
 ## ISSUE-07: Incomplete POS Settlement Authorization for FRONT_DESK
 - **Priority**: P1
-- **Status**: OPEN
+- **Status**: COMPLETE
 - **Description**: The current endpoint-level `@Roles(...)` authorization applies to the entire `/settle` endpoint. It denies all access to `FRONT_DESK`. However, the product requirement states that `FRONT_DESK` must be allowed to perform `ROOM_POST` settlement (to associate F&B orders with guest folios), while remaining denied from `CASH` settlement (which belongs to Restaurant operations).
 - **Code Evidence**: Endpoint relies on NestJS `@Roles` guard which cannot differentiate based on request payload method (CASH vs ROOM_POST).
 - **Root Cause**: Coarse-grained endpoint authorization instead of method-aware server-side authorization.

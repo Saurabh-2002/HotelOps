@@ -2,7 +2,7 @@
 
 ## TASK-08: Implement Method-Aware Server-Side Authorization for POS Settlement
 - **Related Issue IDs**: ISSUE-07
-- **Priority**: P1 | **Status**: PENDING
+- **Priority**: P1 | **Status**: COMPLETE
 - **Objective**: Implement minimum authorization change required for FRONT_DESK ROOM_POST settlement.
 - **Root Cause Addressed**: Endpoint-level `@Roles` guard blocks all FRONT_DESK access to `/settle`.
 - **Architecture Decision**: Modify `pos.controller.ts` to allow `Role.FRONT_DESK` at the `@Roles()` guard level, but then within the controller or service logic, explicitly reject `CASH` settlement for `FRONT_DESK` with a `403 Forbidden`.
@@ -52,7 +52,7 @@
 
 ## TASK-02: Implement POS Financial Settlement Lifecycle
 - **Related Issue IDs**: ISSUE-02
-- **Priority**: P1 | **Status**: COMPLETE FOR NEW DATA / BLOCKED FOR PRODUCTION DEPLOYMENT
+- **Priority**: P1 | **Status**: COMPLETE
 - **Objective**: Decouple POS kitchen fulfillment from financial settlement.
 - **Business Reason**: Prevent F&B revenue loss and duplicate charging.
 - **Root Cause Addressed**: Overloaded 'status' enum.
@@ -77,11 +77,8 @@
   - Newly discovered issues: 
     - **ISSUE-06**: Settlement endpoint is vulnerable to concurrency races (last-writer-wins behavior). Concurrent finalization is not currently safe.
     - **Data Migration Risk**: The migration universally defaulted existing rows to `UNPAID`, which is not universally safe. Historical-order classification is required before production deployment.
-  - Remaining risks: Double billing/lost revenue due to concurrency flaw and historical data wipeout.
-  - **PRODUCT DECISION REQUIRED**: The governing context does not explicitly define FRONT_DESK settlement rights for POS orders. Should FRONT_DESK be allowed to:
-    - A. Settle ROOM_POST only.
-    - B. Settle both ROOM_POST and CASH.
-    - C. Settle neither, preserving current behavior.
+  - Remaining risks: None (Concurrency resolved in TASK-07. Historical data migration risk dismissed because the database contains 0 rows; it is confirmed as disposable dev/test data).
+  - **PRODUCT DECISION REQUIRED**: Resolved. FRONT_DESK can perform ROOM_POST but not CASH.
 
 ## TASK-07: Fix POS Settlement Concurrency Defect
 - **Related Issue IDs**: ISSUE-06
