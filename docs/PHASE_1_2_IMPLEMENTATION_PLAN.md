@@ -34,18 +34,18 @@
 
 ## TASK-02: Implement POS Financial Settlement Lifecycle
 - **Related Issue IDs**: ISSUE-02
-- **Priority**: P1 | **Status**: IMPLEMENTED / PENDING MERGE VERIFICATION
+- **Priority**: P1 | **Status**: FUNCTIONALLY IMPLEMENTED / BLOCKED FROM FINAL COMPLETION
 - **Objective**: Decouple POS kitchen fulfillment from financial settlement.
 - **Business Reason**: Prevent F&B revenue loss and duplicate charging.
 - **Root Cause Addressed**: Overloaded 'status' enum.
 - **Implementation Scope**: Add 'paymentStatus' (UNPAID, PAID_CASH, POSTED_TO_ROOM) to Prisma 'PosOrder'. Create 'POST /api/pos/orders/:id/settle' endpoint requiring method CASH or ROOM_POST.
 - **Explicit Non-Goals**: Do not handle partial payments, refunds, or inventory deductions.
-- **Schema Impact**: Add 'paymentStatus' String/Enum to 'PosOrder' (default 'UNPAID'). Migration required.
+- **Schema Impact**: Add 'paymentStatus' String/Enum to 'PosOrder' (default 'UNPAID'). Migration required. Existing rows default to UNPAID.
 - **API Impact**: New settlement endpoint.
 - **Frontend Impact**: Minimal (update 'pos.service.ts' call).
 - **Financial Impact**: Secures F&B revenue.
 - **Tenant-Isolation/Auth Impact**: Endpoint must verify tenant ownership.
-- **Transaction Boundaries**: Settlement is an atomic update.
+- **Transaction Boundaries**: Settlement is an atomic update, but sequential duplicate requests are rejected at the application level.
 - **Idempotency Requirements**: Reject settlement if 'paymentStatus' is not UNPAID.
 - **Required Tests**: Cash settlement, room-post settlement, duplicate settlement rejection.
 - **Acceptance Criteria**: Orders can be explicitly settled exactly once.
@@ -55,9 +55,39 @@
   - Implementation summary: Added 'paymentStatus' enum. Exposed 'POST /api/pos/orders/:id/settle' API enforcing strictly structured financial state transitions. Validates checkout state, idempotency, and isolation.
   - Files changed: 'schema.prisma', 'pos.dto.ts', 'pos.controller.ts', 'pos.service.ts', 'pos.service.spec.ts', 'package.json'
   - Tests executed/results: 15 integration tests passed. Backend suite and build passed.
-  - Acceptance-criteria result: PASSED.
-  - Newly discovered issues: None.
-  - Remaining risks: None.
+  - Acceptance-criteria result: PASSED structurally, but failed concurrency constraints.
+  - Newly discovered issues: 
+    - **ISSUE-06**: Settlement endpoint is vulnerable to concurrency races (last-writer-wins behavior). Concurrent finalization is not currently safe.
+    - **Data Migration Risk**: The migration universally defaulted existing rows to `UNPAID`, which is not universally safe. Historical-order classification is required before production deployment.
+  - Remaining risks: Double billing/lost revenue due to concurrency flaw and historical data wipeout.
+  - **PRODUCT DECISION REQUIRED**: The governing context does not explicitly define FRONT_DESK settlement rights for POS orders. Should FRONT_DESK be allowed to:
+    - A. Settle ROOM_POST only.
+    - B. Settle both ROOM_POST and CASH.
+    - C. Settle neither, preserving current behavior.
+
+## TASK-07: Fix POS Settlement Concurrency Defect
+- **Related Issue IDs**: ISSUE-06
+- **Priority**: P0 | **Status**: PENDING
+- **Objective**: Guarantee exactly-once financial finalization under concurrent load.
+- **Business Reason**: Prevent duplicate charges, race conditions, and corrupted folios.
+- **Root Cause Addressed**: Application-level read-modify-write pattern running under default Postgres Read Committed isolation without row locks or conditional updates.
+- **Architecture Decision**: [To be decided in Phase I]
+- **Implementation Scope**: Modify `pos.service.ts` `settleOrder()` to enforce state transition atomically at the database write boundary.
+- **Explicit Non-Goals**: Do not add a full payment ledger. Do not implement Folio logic. Do not modify checkout logic.
+- **Expected Files Affected**: `pos.service.ts`, `pos.service.spec.ts`
+- **Schema Impact**: None.
+- **API Impact**: API response remains the same. Losers in concurrency race receive 409 Conflict.
+- **Financial Impact**: Ensures exact-once semantics for F&B revenue.
+- **Tenant-Isolation/Auth Impact**: Must remain fully enforced.
+- **Transaction Boundaries**: Atomic financial-state transition enforced natively in DB.
+- **Required Tests**:
+  - Concurrent CASH vs CASH
+  - Concurrent ROOM_POST vs ROOM_POST (same booking)
+  - Concurrent ROOM_POST vs ROOM_POST (different bookings)
+  - Concurrent CASH vs ROOM_POST
+- **Acceptance Criteria**: Under concurrent load, exactly one settlement request succeeds. Losing requests fail cleanly. No partial state persists.
+- **Dependencies**: TASK-02.
+- **Recommended Branch Name**: 'fix/pos-settlement-concurrency'
 
 ## TASK-03: Fix Folio Source of Truth & Dynamic Calculation
 - **Related Issue IDs**: ISSUE-03

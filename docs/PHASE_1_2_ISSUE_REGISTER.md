@@ -45,6 +45,25 @@
 - **Required Tests**: Cash settlement, Room post settlement, duplicate room-post rejection, missing booking rejection.
 - **Explicit Acceptance Criteria**: POS order requires an explicit financial settlement action. Once settled as 'POSTED_TO_ROOM', it is immutably eligible for folio inclusion exactly once.
 
+## ISSUE-06: POS Settlement Concurrency Vulnerability
+- **Priority**: P0
+- **Status**: OPEN
+- **Description**: The POS settlement endpoint (`/api/pos/orders/:id/settle`) is vulnerable to concurrent race conditions. Two simultaneous requests can both observe an `UNPAID` status, pass application validation, and both succeed due to the lack of database row locks or conditional update predicates.
+- **Code Evidence**: `pos.service.ts` -> `settleOrder()` reads `paymentStatus` and subsequently calls `tx.posOrder.update({ where: { id } })`.
+- **Root Cause**: Non-atomic application-level read-modify-write pattern running under default Postgres Read Committed isolation.
+- **Operational Impact**: Staff or API clients firing double-clicks or duplicate requests can overwrite each other (last-writer-wins) or create duplicate financial finalizations.
+- **Financial Impact**: F&B revenue could be improperly mapped, or guests could be double-billed (if POS order ID is collected twice in folio logic).
+- **Security/Data-Integrity Impact**: Endangers exact-once financial semantics. `POSTED_TO_ROOM` cannot safely be treated as authoritative folio eligibility until corrected.
+- **Proposed Solution**: Implement an atomic conditional update predicate (e.g., `where: { id, paymentStatus: 'UNPAID' }`) and verify affected row count, or use explicit row locks (`SELECT FOR UPDATE`).
+- **Dependencies**: None.
+- **Files/Modules**: `pos.service.ts`
+- **Required Tests**:
+  - Concurrent CASH vs CASH
+  - Concurrent ROOM_POST vs ROOM_POST (same booking)
+  - Concurrent ROOM_POST vs ROOM_POST (different bookings)
+  - Concurrent CASH vs ROOM_POST
+- **Explicit Acceptance Criteria**: Under concurrent load, exactly one settlement request succeeds. Losing requests fail with a clear conflict response. No last-writer-wins behavior. No duplicate financial finalization.
+
 ## ISSUE-03: Folio Aggregates Are Stale and Non-Deterministic
 - **Priority**: P1
 - **Status**: OPEN
