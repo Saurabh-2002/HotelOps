@@ -32,7 +32,7 @@
 
 ## ISSUE-02: POS Orders Lack Explicit Financial Lifecycle
 - **Priority**: P1
-- **Status**: OPEN
+- **Status**: IMPLEMENTED / PENDING MERGE VERIFICATION
 - **Description**: Restaurant orders posted to rooms are trapped in 'KOT_PRINTED', bypassing billing.
 - **Code Evidence**: 'pos.service.ts' defaults to 'KOT_PRINTED'. 'BillingService' looks for 'BILLED'.
 - **Root Cause**: Conflation of kitchen workflow (KOT_PRINTED, SERVED) with financial finalization (CASH vs ROOM_POST) within a single 'status' enum.

@@ -1,6 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateMenuItemDto, CreatePosOrderDto } from './dto/pos.dto';
+import { CreateMenuItemDto, CreatePosOrderDto, SettlePosOrderDto } from './dto/pos.dto';
 
 @Injectable()
 export class PosService {
@@ -93,6 +93,54 @@ export class PosService {
           items: { include: { menuItem: true } },
         },
       });
+    });
+  }
+
+  async settleOrder(tenantId: string, id: string, dto: SettlePosOrderDto) {
+    return this.prisma.withTenant(tenantId, async (tx) => {
+      const order = await tx.posOrder.findUnique({ where: { id } });
+      if (!order) {
+        throw new NotFoundException(`Order ${id} not found`);
+      }
+
+      if (order.paymentStatus !== 'UNPAID') {
+        throw new ConflictException(`Order is already financially finalized with status ${order.paymentStatus}`);
+      }
+
+      if (dto.method === 'CASH') {
+        return tx.posOrder.update({
+          where: { id },
+          data: { paymentStatus: 'PAID_CASH' }
+        });
+      }
+
+      if (dto.method === 'ROOM_POST') {
+        if (!dto.bookingId) {
+          throw new BadRequestException('bookingId is required for ROOM_POST settlement');
+        }
+
+        const booking = await tx.booking.findFirst({
+          where: { id: dto.bookingId, tenantId },
+        });
+
+        if (!booking) {
+          throw new NotFoundException(`Booking ${dto.bookingId} not found`);
+        }
+
+        if (booking.status !== 'CHECKED_IN') {
+          throw new ConflictException(`Cannot post to room. Booking status is ${booking.status}`);
+        }
+
+        return tx.posOrder.update({
+          where: { id },
+          data: {
+            paymentStatus: 'POSTED_TO_ROOM',
+            bookingId: dto.bookingId,
+          },
+        });
+      }
+
+      throw new BadRequestException('Invalid settlement method');
     });
   }
 }

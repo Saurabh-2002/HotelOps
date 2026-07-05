@@ -144,6 +144,12 @@ enum PosOrderStatus {
   CANCELLED
 }
 
+enum PaymentStatus {
+  UNPAID
+  PAID_CASH
+  POSTED_TO_ROOM
+}
+
 model MenuItem {
   id          String   @id @default(uuid())
   tenantId    String
@@ -167,6 +173,7 @@ model PosOrder {
   bookingId   String?  // Optional: Link to a room/booking
   booking     Booking? @relation(fields: [bookingId], references: [id])
   status      PosOrderStatus @default(KOT_PRINTED)
+  paymentStatus PaymentStatus @default(UNPAID)
   totalAmount Decimal  @default(0) @db.Decimal(10, 2)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
