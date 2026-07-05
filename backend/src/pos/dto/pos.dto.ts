@@ -40,3 +40,17 @@ export class CreatePosOrderDto {
   @IsArray()
   items: OrderItemDto[];
 }
+
+export enum PosSettlementMethod {
+  CASH = 'CASH',
+  ROOM_POST = 'ROOM_POST',
+}
+
+export class SettlePosOrderDto {
+  @IsEnum(PosSettlementMethod)
+  method: PosSettlementMethod;
+
+  @IsString()
+  @IsOptional()
+  bookingId?: string; // Required for ROOM_POST
+}
