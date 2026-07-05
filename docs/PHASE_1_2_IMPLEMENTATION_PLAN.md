@@ -184,3 +184,39 @@
 - **Implementation Scope**: Write automated test cases for Auth/RBAC, GST, POS lifecycle, Folio generation, Checkout blocking.
 - **Dependencies**: TASK-01 through TASK-05.
 - **Recommended Branch Name**: 'test/phase-1-2-regression'
+
+## TASK-09: Repair Application-Role Grants and Security-Model Verification
+- **Related Issue IDs**: ISSUE-11
+- **Priority**: P0 | **Status**: COMPLETE
+- **Objective**: Restore reproducible least-privilege database access for the `hotelops_app` runtime role and verify RLS tenant isolation at the database enforcement level.
+- **Business Reason**: Without this fix, the entire application fails when using the intended security model. All prior verification was performed under the owner role, which bypasses RLS.
+- **Root Cause Addressed**: `hotelops_app` had zero grants after Prisma schema recreation wiped explicit permissions and default privileges.
+- **Architecture Decision**: Consolidated all role provisioning, RLS setup, and tenant policy creation into a single idempotent `setup-rls-role.ts` script. This subsumes the former `setup-pos-rls.ts`. The script validates migration role identity before granting privileges.
+- **Implementation Scope**: 
+  - Rewrote `setup-rls-role.ts` to: validate schema/table ownership, grant USAGE on schema public, grant SELECT/INSERT/UPDATE/DELETE on all application tables, set ALTER DEFAULT PRIVILEGES for future objects, enable RLS + FORCE RLS on all tenant-scoped tables, create tenant isolation policies idempotently, revoke CREATE on schema from hotelops_app and PUBLIC.
+  - Created `security-roles.spec.ts` with 36 database-connected tests using separated owner/app clients with safeguard validation.
+- **Explicit Non-Goals**: Do not modify financial logic, frontend, or Prisma schema.
+- **Expected Files Affected**: `setup-rls-role.ts`, `security-roles.spec.ts`
+- **Schema Impact**: None.
+- **API Impact**: None (runtime now works correctly under application role).
+- **Operational Order**: Owner applies migrations → `ts-node src/setup-rls-role.ts` → verification → NestJS starts with `APP_DATABASE_URL`.
+- **Security Guarantees**: `hotelops_app` is NOSUPERUSER, NOBYPASSRLS, NOCREATEDB, NOCREATEROLE, not schema/table/sequence owner. CREATE on schema revoked. RLS + FORCE RLS enabled on all tenant tables.
+- **Provisioning Idempotency**: Verified — second run succeeds with no privilege broadening or policy duplication.
+- **Required Tests**: 36 tests covering role attributes, DDL denial, RLS/FORCE RLS state, tenant isolation (same-tenant CRUD, cross-tenant rejection), raw Booking locks, billing settlement, POS ROOM_POST, provisioning safety.
+- **Dependencies**: None.
+- **Recommended Branch Name**: `fix/application-role-permissions`
+- **Verification Result**:
+  - Tests executed/results: 83/83 backend tests passed under application role.
+  - Acceptance-criteria result: PASSED.
+  - Task Commit SHA: 50fc86d
+  - Merge Commit SHA: affcb8c
+
+## TASK-10: Freeze POS Item Descriptions at Order Creation
+- **Related Issue IDs**: ISSUE-12
+- **Priority**: P1 | **Status**: PENDING
+- **Objective**: Persist transactional item name at POS order creation so invoices reflect sale-time data, not mutable MenuItem state.
+- **Business Reason**: Financial audit trail must prove what was actually sold.
+- **Root Cause Addressed**: `PosOrderItem` lacks `itemName`; invoice generation reads live `MenuItem.name`.
+- **Implementation Scope**: Add `itemName` to `PosOrderItem`, persist at order creation, read from persisted value in invoice calculation.
+- **Dependencies**: TASK-09.
+- **Recommended Branch Name**: `fix/pos-transactional-item-description`

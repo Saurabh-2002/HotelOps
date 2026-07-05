@@ -152,3 +152,34 @@
 - **Files/Modules**: 'billing/page.tsx'
 - **Required Tests**: Visual verification of POS lines and total matches.
 - **Explicit Acceptance Criteria**: Frontend accurately reflects the backend 'breakdown' including F&B items.
+
+## ISSUE-11: Application Role Lacks Runtime Database Privileges
+- **Priority**: P0
+- **Status**: COMPLETE
+- **Description**: The intended `hotelops_app` application role had zero database grants — no `USAGE` on schema `public`, no table `SELECT/INSERT/UPDATE/DELETE`, no default privileges. All prior TASK-01 through TASK-08 verification was performed using the `neondb_owner` migration role, which has `BYPASSRLS`, masking the fact that the application role could not connect at all.
+- **Root Cause**: Prisma Migrate resets/recreates the `public` schema during development resets, wiping explicit grants and default privileges. The original `setup-rls-role.ts` provisioning script was not re-run after schema changes.
+- **Operational Impact**: Total application failure when using the intended security model.
+- **Financial Impact**: No runtime billing/settlement operations possible under the application role.
+- **Security/Data-Integrity Impact**: All prior RLS verification was performed under the owner role, which bypasses RLS entirely. True tenant isolation was never verified at the database enforcement level until TASK-09.
+- **Proposed Solution**: Implement idempotent, repository-controlled provisioning that grants least-privilege access, configures RLS/FORCE RLS on all tenant tables, creates tenant isolation policies, and sets `ALTER DEFAULT PRIVILEGES` for future objects.
+- **Dependencies**: None.
+- **Files/Modules**: `setup-rls-role.ts`, `security-roles.spec.ts`
+- **Verification Result**:
+  - Implementation summary: Rewrote `setup-rls-role.ts` to validate migration role identity, grant exactly `USAGE` + DML on application tables, set default privileges, enable RLS + FORCE RLS on all tenant tables including POS tables, create tenant isolation policies idempotently, revoke `CREATE` on schema from `hotelops_app` and `PUBLIC`.
+  - Tests added: 36 database-connected security tests with separated owner/app clients.
+  - Tests executed/results: 83/83 backend tests passed under application role.
+  - Acceptance-criteria result: PASSED.
+
+## ISSUE-12: POS Order Item Lacks Transactional Item Name
+- **Priority**: P1
+- **Status**: OPEN
+- **Description**: `PosOrderItem` preserves transactional `unitPrice` but does not preserve the transactional item name/description. The immutable settled invoice snapshot therefore freezes settlement-time mutable `MenuItem.name`, not the item identity/description recorded at sale/KOT creation time.
+- **Root Cause**: `PosOrderItem` schema lacks an `itemName` column; invoice generation joins on live `MenuItem.name`.
+- **Operational Impact**: Changing a menu item's display name after order creation retroactively changes unsettled invoice line-item names.
+- **Financial Impact**: Audit trail cannot prove what was actually sold at order time.
+- **Security/Data-Integrity Impact**: Financial records may not match the actual sale event.
+- **Proposed Solution**: Add `itemName String` to `PosOrderItem`, persist at order creation, read from persisted value in invoice calculation and snapshot freezing.
+- **Dependencies**: TASK-09 (ISSUE-11 must be resolved first).
+- **Files/Modules**: `schema.prisma`, `pos.service.ts`, `billing.service.ts`, migration
+- **Required Tests**: MenuItem mutation after order creation does not change OPEN invoice; MenuItem mutation before settlement does not change snapshot.
+- **Explicit Acceptance Criteria**: OPEN and SETTLED invoices use only transactional (sale-time) item names and prices from `PosOrderItem`, never live `MenuItem` data.
