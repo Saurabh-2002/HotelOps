@@ -2,7 +2,7 @@
 
 ## TASK-01: Fix GST Slab Calculation
 - **Related Issue IDs**: ISSUE-01
-- **Priority**: P0 | **Status**: PENDING
+- **Priority**: P0 | **Status**: IMPLEMENTED / PENDING MERGE VERIFICATION
 - **Objective**: Ensure GST slab is evaluated strictly against the daily room rate.
 - **Business Reason**: Legal financial compliance.
 - **Root Cause Addressed**: Developer passed total invoice amount to slab calculator.
@@ -17,6 +17,15 @@
 - **Acceptance Criteria**: 18% GST is only applied if 'dailyRate > 7500'.
 - **Dependencies**: None.
 - **Recommended Branch Name**: 'fix/gst-calculation'
+- **Verification Result**: 
+  - Actual root cause: 'totalRoomCharge' was used as the slab basis instead of 'roomRate'.
+  - Implementation summary: Added optional 'dailyRate' parameter to 'calculateGst()'. Used it as basis if provided. Updated 'generateInvoiceForBooking' to pass 'roomRate'.
+  - Files changed: 'backend/src/billing/billing.service.ts', 'backend/src/billing/billing.service.spec.ts'
+  - Tests added: 9 jest test cases covering boundary conditions, multi-night stays, and fallback behavior.
+  - Tests executed/results: 9 tests passed. Complete backend test suite passed.
+  - Acceptance-criteria result: PASSED.
+  - Newly discovered issues: None.
+  - Remaining risks: None.
 
 ## TASK-02: Implement POS Financial Settlement Lifecycle
 - **Related Issue IDs**: ISSUE-02
