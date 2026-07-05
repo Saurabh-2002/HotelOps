@@ -1,5 +1,20 @@
 # Phase 1-2 Issue Register
 
+## ISSUE-07: Incomplete POS Settlement Authorization for FRONT_DESK
+- **Priority**: P1
+- **Status**: OPEN
+- **Description**: The current endpoint-level `@Roles(...)` authorization applies to the entire `/settle` endpoint. It denies all access to `FRONT_DESK`. However, the product requirement states that `FRONT_DESK` must be allowed to perform `ROOM_POST` settlement (to associate F&B orders with guest folios), while remaining denied from `CASH` settlement (which belongs to Restaurant operations).
+- **Code Evidence**: Endpoint relies on NestJS `@Roles` guard which cannot differentiate based on request payload method (CASH vs ROOM_POST).
+- **Root Cause**: Coarse-grained endpoint authorization instead of method-aware server-side authorization.
+- **Operational Impact**: Front desk staff cannot finalize restaurant orders to guest folios.
+- **Financial Impact**: Uncollected F&B revenue if guests check out without front desk being able to post their open restaurant bills.
+- **Security/Data-Integrity Impact**: Overly restrictive, causing workflow blocks.
+- **Proposed Solution**: Implement a method-aware server-side authorization check within `PosService.settleOrder` (or a custom Guard) to explicitly enforce the matrix.
+- **Dependencies**: None.
+- **Files/Modules**: `pos.service.ts`, `pos.controller.ts`
+- **Required Tests**: Matrix of all roles (OWNER, MANAGER, RESTAURANT, FRONT_DESK) against CASH and ROOM_POST to prove exact allowance/denial.
+- **Explicit Acceptance Criteria**: FRONT_DESK CASH returns 403. FRONT_DESK ROOM_POST proceeds. Other roles allowed for both.
+
 ## ISSUE-01: Incorrect Room GST Slab Calculation
 - **Priority**: P0
 - **Status**: COMPLETE
