@@ -39,6 +39,12 @@ Implemented backend areas:
   * FRONT_DESK
   * RESTAURANT
 
+* Restaurant POS Settlement Authorization Matrix:
+  * OWNER: CASH allowed, ROOM_POST allowed.
+  * MANAGER: CASH allowed, ROOM_POST allowed.
+  * RESTAURANT: CASH allowed, ROOM_POST allowed.
+  * FRONT_DESK: CASH denied, ROOM_POST allowed. (Rationale: Restaurant CASH settlement belongs to Restaurant operations. ROOM_POST affects the guest stay/folio, so FRONT_DESK must be able to post eligible orders to an active checked-in guest).
+
 * Rooms management.
 
 * Booking management.

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Body, Param, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, Param, UseGuards, Request, ForbiddenException } from '@nestjs/common';
 import { PosService } from './pos.service';
 import { CreateMenuItemDto, CreatePosOrderDto, SettlePosOrderDto } from './dto/pos.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -41,8 +41,11 @@ export class PosController {
   }
 
   @Post('orders/:id/settle')
-  @Roles('OWNER', 'MANAGER', 'RESTAURANT')
+  @Roles('OWNER', 'MANAGER', 'RESTAURANT', 'FRONT_DESK')
   settleOrder(@Request() req: any, @Param('id') id: string, @Body() dto: SettlePosOrderDto) {
+    if (req.user.role === 'FRONT_DESK' && dto.method === 'CASH') {
+      throw new ForbiddenException('FRONT_DESK is not authorized to perform CASH settlement');
+    }
     return this.posService.settleOrder(req.user.tenantId, id, dto);
   }
 }

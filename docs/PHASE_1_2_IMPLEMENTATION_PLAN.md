@@ -1,5 +1,23 @@
 # Phase 1-2 Implementation Plan
 
+## TASK-08: Implement Method-Aware Server-Side Authorization for POS Settlement
+- **Related Issue IDs**: ISSUE-07
+- **Priority**: P1 | **Status**: PENDING
+- **Objective**: Implement minimum authorization change required for FRONT_DESK ROOM_POST settlement.
+- **Root Cause Addressed**: Endpoint-level `@Roles` guard blocks all FRONT_DESK access to `/settle`.
+- **Architecture Decision**: Modify `pos.controller.ts` to allow `Role.FRONT_DESK` at the `@Roles()` guard level, but then within the controller or service logic, explicitly reject `CASH` settlement for `FRONT_DESK` with a `403 Forbidden`.
+- **Implementation Scope**: Method-aware authorization inside `pos.controller.ts` or `pos.service.ts`.
+- **Explicit Non-Goals**: Do not modify checkout, folio, or frontend code.
+- **Expected Files Affected**: `pos.controller.ts`, `pos.service.ts`, `pos.authorization.spec.ts`
+- **Schema Impact**: None.
+- **API Impact**: `FRONT_DESK` receives `403` for `CASH`, but proceeds for `ROOM_POST`.
+- **Financial Impact**: Fixes blocked workflows for F&B revenue.
+- **Tenant-Isolation/Auth Impact**: Granular method-aware enforcement inside tenant context.
+- **Transaction Boundaries**: N/A.
+- **Required Tests**: 15 tests proving matrix behavior.
+- **Dependencies**: TASK-02, TASK-07.
+- **Recommended Branch Name**: `feature/pos-frontdesk-auth`
+
 ## TASK-01: Fix GST Slab Calculation
 - **Related Issue IDs**: ISSUE-01
 - **Priority**: P0 | **Status**: COMPLETE
