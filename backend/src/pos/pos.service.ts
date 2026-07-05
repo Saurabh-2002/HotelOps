@@ -107,14 +107,11 @@ export class PosService {
         throw new ConflictException(`Order is already financially finalized with status ${order.paymentStatus}`);
       }
 
+      let updateData: any = {};
+      
       if (dto.method === 'CASH') {
-        return tx.posOrder.update({
-          where: { id },
-          data: { paymentStatus: 'PAID_CASH' }
-        });
-      }
-
-      if (dto.method === 'ROOM_POST') {
+        updateData = { paymentStatus: 'PAID_CASH' };
+      } else if (dto.method === 'ROOM_POST') {
         if (!dto.bookingId) {
           throw new BadRequestException('bookingId is required for ROOM_POST settlement');
         }
@@ -131,16 +128,25 @@ export class PosService {
           throw new ConflictException(`Cannot post to room. Booking status is ${booking.status}`);
         }
 
-        return tx.posOrder.update({
-          where: { id },
-          data: {
-            paymentStatus: 'POSTED_TO_ROOM',
-            bookingId: dto.bookingId,
-          },
-        });
+        updateData = {
+          paymentStatus: 'POSTED_TO_ROOM',
+          bookingId: dto.bookingId,
+        };
+      } else {
+        throw new BadRequestException('Invalid settlement method');
       }
 
-      throw new BadRequestException('Invalid settlement method');
+      // Atomic compare-and-set update to prevent concurrent race conditions
+      const result = await tx.posOrder.updateMany({
+        where: { id, paymentStatus: 'UNPAID' },
+        data: updateData,
+      });
+
+      if (result.count === 0) {
+        throw new ConflictException('Order settlement failed due to concurrent modification or it is already settled.');
+      }
+
+      return tx.posOrder.findUnique({ where: { id } });
     });
   }
 }
