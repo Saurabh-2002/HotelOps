@@ -2,7 +2,7 @@
 
 ## ISSUE-01: Incorrect Room GST Slab Calculation
 - **Priority**: P0
-- **Status**: IMPLEMENTED / PENDING MERGE VERIFICATION
+- **Status**: COMPLETE
 - **Description**: GST slab (12% vs 18%) is incorrectly calculated using the total stay amount instead of the daily room rate.
 - **Code Evidence**: 'billing.service.ts' -> 'calculateGst()' is passed 'totalRoomCharge' (Nights × Rate).
 - **Root Cause**: Developer conflated total invoice line item amount with daily tariff boundary.
