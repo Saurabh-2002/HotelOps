@@ -1,12 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateFolioDto } from './dto/billing.dto';
+import { InvoiceSnapshotV1 } from './dto/invoice-snapshot.dto';
 
-// India GST rates for hotel rooms (simplified)
 const GST_RATES = {
-  // Room tariff <= 7500: 12% (6% CGST + 6% SGST)
   STANDARD: { cgstRate: 0.06, sgstRate: 0.06 },
-  // Room tariff > 7500: 18% (9% CGST + 9% SGST)
   PREMIUM: { cgstRate: 0.09, sgstRate: 0.09 },
 };
 
@@ -14,15 +12,80 @@ const GST_RATES = {
 export class BillingService {
   constructor(private readonly prisma: PrismaService) {}
 
-  /**
-   * Calculates GST based on Indian hotel room tariff slabs.
-   */
   calculateGst(totalAmount: number, dailyRate?: number) {
     const basis = dailyRate !== undefined ? dailyRate : totalAmount;
     const rate = basis <= 7500 ? GST_RATES.STANDARD : GST_RATES.PREMIUM;
     const cgst = Math.round(totalAmount * rate.cgstRate * 100) / 100;
     const sgst = Math.round(totalAmount * rate.sgstRate * 100) / 100;
     return { cgst, sgst, total: totalAmount + cgst + sgst };
+  }
+
+  // Common dynamic calculation path
+  private _calculateInvoiceViewModel(booking: any): InvoiceSnapshotV1 {
+    const checkIn = new Date(booking.checkInDate);
+    const checkOut = new Date(booking.checkOutDate);
+    const nights = Math.max(1, Math.ceil((checkOut.getTime() - checkIn.getTime()) / 86400000));
+    const roomRate = Number(booking.room.baseRate);
+    const totalRoomCharge = roomRate * nights;
+    
+    const roomGst = this.calculateGst(totalRoomCharge, roomRate);
+    const roomGstRate = roomRate <= 7500 ? 0.12 : 0.18;
+
+    let totalPosCharge = 0;
+    const posOrders = booking.posOrders.map((order: any) => {
+      const orderSubtotal = Number(order.totalAmount);
+      totalPosCharge += orderSubtotal;
+      
+      return {
+        id: order.id,
+        createdAt: new Date(order.createdAt).toISOString(),
+        totalAmount: orderSubtotal,
+        items: order.items.map((item: any) => ({
+          menuItem: { name: item.menuItem.name },
+          quantity: item.quantity,
+          unitPrice: Number(item.unitPrice),
+        }))
+      };
+    });
+
+    const posCgst = Math.round(totalPosCharge * 0.025 * 100) / 100;
+    const posSgst = Math.round(totalPosCharge * 0.025 * 100) / 100;
+
+    const cgst = roomGst.cgst + posCgst;
+    const sgst = roomGst.sgst + posSgst;
+    const grandTotal = totalRoomCharge + totalPosCharge + cgst + sgst;
+
+    const guest = booking.guestRecords?.[0] || {};
+
+    return {
+      snapshotVersion: 1,
+      bookingId: booking.id,
+      folioId: '',
+      tenantId: booking.tenantId,
+      settledAt: '',
+      guestName: guest.fullName || 'Unknown Guest',
+      guestEmail: guest.email || '',
+      guestPhone: guest.phone || '',
+      roomNumber: booking.room.number,
+      roomType: booking.room.type,
+      checkInDate: checkIn.toISOString(),
+      checkOutDate: checkOut.toISOString(),
+      nights,
+      roomRate,
+      roomGstRate,
+      totalRoomCharge,
+      roomCgst: roomGst.cgst,
+      roomSgst: roomGst.sgst,
+      roomTotal: totalRoomCharge + roomGst.cgst + roomGst.sgst,
+      posOrders,
+      totalPosCharge,
+      posCgst,
+      posSgst,
+      cgst,
+      sgst,
+      grandTotal,
+      status: 'SETTLED'
+    };
   }
 
   async findAllByBooking(tenantId: string, bookingId: string) {
@@ -35,126 +98,147 @@ export class BillingService {
   }
 
   async findOne(tenantId: string, id: string) {
+    let lookupId = id;
+    let isBookingId = false;
+    if (id.startsWith('OPEN-')) {
+      lookupId = id.substring(5);
+      isBookingId = true;
+    }
+    
     return this.prisma.withTenant(tenantId, async (tx) => {
-      const folio = await tx.folio.findUnique({
-        where: { id },
-        include: { booking: { include: { room: true, guestRecords: true } } },
-      });
-      if (!folio) throw new NotFoundException('Folio not found');
+      let folio;
+      if (isBookingId) {
+        folio = await tx.folio.findUnique({ where: { bookingId: lookupId } });
+      } else {
+        folio = await tx.folio.findUnique({ where: { id } });
+      }
+
+      if (!folio && !isBookingId) throw new NotFoundException('Folio not found');
+      
+      if (!folio && isBookingId) {
+        return (await this.generateInvoiceForBooking(tenantId, lookupId)).folio;
+      }
       return folio;
     });
   }
 
   async createFolio(tenantId: string, dto: CreateFolioDto) {
-    const gst = this.calculateGst(dto.totalAmount);
-
-    return this.prisma.withTenant(tenantId, async (tx) => {
-      return tx.folio.create({
-        data: {
-          tenantId,
-          bookingId: dto.bookingId,
-          totalAmount: dto.totalAmount,
-          cgst: dto.cgst ?? gst.cgst,
-          sgst: dto.sgst ?? gst.sgst,
-          status: 'OPEN',
-        },
-        include: { booking: { include: { room: true } } },
-      });
-    });
+    throw new ConflictException('Folios are created dynamically or frozen via settlement.');
   }
 
   async generateInvoiceForBooking(tenantId: string, bookingId: string) {
     return this.prisma.withTenant(tenantId, async (tx) => {
-      const booking = await tx.booking.findUnique({
-        where: { id: bookingId },
+      const existingFolio = await tx.folio.findUnique({ where: { bookingId } });
+      
+      if (existingFolio && existingFolio.status === 'SETTLED') {
+        if (!existingFolio.invoiceSnapshot) {
+          throw new ConflictException('Legacy settled folio is missing a historical snapshot. Cannot reconstruct invoice.');
+        }
+        const snapshot = existingFolio.invoiceSnapshot as any as InvoiceSnapshotV1;
+        if (snapshot.snapshotVersion !== 1) {
+          throw new ConflictException(`Unsupported snapshot version: ${snapshot.snapshotVersion}`);
+        }
+        return {
+          folio: { ...snapshot, id: snapshot.folioId },
+          breakdown: snapshot,
+          booking: { id: bookingId }
+        };
+      }
+
+      const booking = await tx.booking.findFirst({
+        where: { id: bookingId, tenantId },
         include: {
           room: true,
           guestRecords: true,
-          folios: true,
           posOrders: {
-            where: { status: 'BILLED' },
+            where: { paymentStatus: 'POSTED_TO_ROOM' },
             include: { items: { include: { menuItem: true } } }
           }
         },
       });
       if (!booking) throw new NotFoundException('Booking not found');
 
-      // Calculate room charges based on number of nights
-      const checkIn = new Date(booking.checkInDate);
-      const checkOut = new Date(booking.checkOutDate);
-      const nights = Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24)) || 1;
-      const roomRate = Number(booking.room.baseRate);
-      const totalRoomCharge = roomRate * nights;
-      const roomGst = this.calculateGst(totalRoomCharge, roomRate);
-
-      // Calculate POS charges
-      let totalPosCharge = 0;
-      booking.posOrders.forEach((order: any) => {
-        totalPosCharge += Number(order.totalAmount);
-      });
-      const posCgst = Math.round(totalPosCharge * 0.025 * 100) / 100;
-      const posSgst = Math.round(totalPosCharge * 0.025 * 100) / 100;
-
-      const totalAmount = totalRoomCharge + totalPosCharge;
-      const cgst = roomGst.cgst + posCgst;
-      const sgst = roomGst.sgst + posSgst;
-      const grandTotal = totalAmount + cgst + sgst;
-
-      const breakdown = {
-        roomRate,
-        nights,
-        totalRoomCharge,
-        roomCgst: roomGst.cgst,
-        roomSgst: roomGst.sgst,
-        totalPosCharge,
-        posCgst,
-        posSgst,
-        cgst,
-        sgst,
-        grandTotal,
-        posOrders: booking.posOrders,
-      };
-
-      // Check if a folio already exists
-      const existingFolio = booking.folios.find((f: any) => f.status === 'OPEN');
-      if (existingFolio) {
-        // Optionally update it to latest totals, but for now just return
-        return {
-          folio: existingFolio,
-          breakdown,
-          booking,
-        };
-      }
-
-      // Create new folio
-      const folio = await tx.folio.create({
-        data: {
-          tenantId,
-          bookingId,
-          totalAmount,
-          cgst,
-          sgst,
-          status: 'OPEN',
-        },
-      });
+      const snapshot = this._calculateInvoiceViewModel(booking);
+      snapshot.status = 'SETTLED'; // Technically OPEN logic, but snapshot interface uses SETTLED string
 
       return {
-        folio,
-        breakdown,
+        folio: {
+          id: `OPEN-${bookingId}`,
+          tenantId,
+          bookingId,
+          status: 'OPEN',
+          totalAmount: snapshot.grandTotal,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          snapshot
+        },
+        breakdown: snapshot,
         booking,
       };
     });
   }
 
   async settleFolio(tenantId: string, id: string) {
+    let bookingId = id;
+    if (id.startsWith('OPEN-')) {
+      bookingId = id.substring(5);
+    }
+    
     return this.prisma.withTenant(tenantId, async (tx) => {
-      const folio = await tx.folio.findUnique({ where: { id } });
-      if (!folio) throw new NotFoundException('Folio not found');
-      return tx.folio.update({
-        where: { id },
-        data: { status: 'SETTLED' },
-        include: { booking: { include: { room: true, guestRecords: true } } },
+      const bookings: any[] = await tx.$queryRaw`SELECT id FROM "Booking" WHERE id = ${bookingId} AND "tenantId" = ${tenantId} FOR UPDATE`;
+      if (bookings.length === 0) {
+        throw new NotFoundException('Booking not found');
+      }
+
+      const existingFolio = await tx.folio.findUnique({ where: { bookingId } });
+      if (existingFolio && existingFolio.status === 'SETTLED') {
+        throw new ConflictException('Folio is already settled');
+      }
+
+      const booking = await tx.booking.findUnique({
+        where: { id: bookingId },
+        include: {
+          room: true,
+          guestRecords: true,
+          posOrders: {
+            where: { paymentStatus: 'POSTED_TO_ROOM' },
+            include: { items: { include: { menuItem: true } } }
+          }
+        },
       });
+      if (!booking) throw new NotFoundException('Booking not found');
+
+      const snapshot = this._calculateInvoiceViewModel(booking);
+      const settledAt = new Date();
+      snapshot.settledAt = settledAt.toISOString();
+
+      try {
+        const folio = await tx.folio.create({
+          data: {
+            tenantId,
+            bookingId,
+            status: 'SETTLED',
+            totalAmount: snapshot.grandTotal,
+            invoiceSnapshot: snapshot as any,
+            snapshotVersion: 1,
+            settledAt,
+          },
+        });
+        snapshot.folioId = folio.id;
+        
+        // Update the snapshot in DB now that we have the folioId
+        const finalFolio = await tx.folio.update({
+          where: { id: folio.id },
+          data: { invoiceSnapshot: snapshot as any }
+        });
+
+        return finalFolio;
+      } catch (err: any) {
+        if (err.code === 'P2002') {
+          throw new ConflictException('Folio is already settled');
+        }
+        throw err;
+      }
     });
   }
 }

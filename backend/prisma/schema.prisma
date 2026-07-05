@@ -131,8 +131,13 @@ model Folio {
   cgst        Decimal  @default(0) @db.Decimal(10, 2)
   sgst        Decimal  @default(0) @db.Decimal(10, 2)
   status      FolioStatus @default(OPEN)
+  invoiceSnapshot Json?
+  snapshotVersion Int?
+  settledAt   DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@unique([bookingId])
 
   @@index([tenantId])
 }
