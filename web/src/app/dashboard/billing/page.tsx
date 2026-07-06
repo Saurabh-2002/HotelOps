@@ -186,29 +186,80 @@ export default function BillingPage() {
                   <tbody className="divide-y divide-slate-200 bg-white text-slate-600">
                     <tr>
                       <td className="px-4 py-3">
-                        Room Charges ({invoiceData.breakdown.nights} nights @ ₹{Number(invoiceData.breakdown.roomRate)})
+                        <span className="font-semibold block text-slate-800">Room Charges</span>
+                        <span className="text-xs">{invoiceData.breakdown.nights} nights @ ₹{Number(invoiceData.breakdown.roomRate)}</span>
                       </td>
                       <td className="px-4 py-3 text-right">{Number(invoiceData.breakdown.totalRoomCharge).toFixed(2)}</td>
                     </tr>
+                    
+                    {invoiceData.breakdown.posOrders && invoiceData.breakdown.posOrders.map((order: any) => (
+                      <tr key={order.id}>
+                        <td className="px-4 py-3">
+                           <span className="font-semibold block text-slate-800">Restaurant Order #{order.id.substring(0, 6).toUpperCase()}</span>
+                           <ul className="text-xs mt-1 space-y-1">
+                             {order.items.map((item: any, i: number) => (
+                               <li key={i}>
+                                 {item.quantity}x {item.menuItem.name} (@ ₹{item.unitPrice})
+                               </li>
+                             ))}
+                           </ul>
+                        </td>
+                        <td className="px-4 py-3 text-right">{Number(order.totalAmount).toFixed(2)}</td>
+                      </tr>
+                    ))}
+
+                    <tr className="bg-slate-50">
+                      <td className="px-4 py-3 text-slate-600 font-medium text-right">Subtotal</td>
+                      <td className="px-4 py-3 text-right font-medium">₹{(Number(invoiceData.breakdown.totalRoomCharge) + Number(invoiceData.breakdown.totalPosCharge)).toFixed(2)}</td>
+                    </tr>
+
                     <tr>
-                      <td className="px-4 py-3 text-slate-500 text-xs text-right">CGST</td>
-                      <td className="px-4 py-3 text-right">{Number(invoiceData.breakdown.cgst).toFixed(2)}</td>
+                      <td className="px-4 py-2 text-slate-500 text-xs text-right">
+                        Room CGST
+                      </td>
+                      <td className="px-4 py-2 text-right">{Number(invoiceData.breakdown.roomCgst).toFixed(2)}</td>
                     </tr>
                     <tr>
-                      <td className="px-4 py-3 text-slate-500 text-xs text-right">SGST</td>
-                      <td className="px-4 py-3 text-right">{Number(invoiceData.breakdown.sgst).toFixed(2)}</td>
+                      <td className="px-4 py-2 text-slate-500 text-xs text-right">
+                        Room SGST
+                      </td>
+                      <td className="px-4 py-2 text-right">{Number(invoiceData.breakdown.roomSgst).toFixed(2)}</td>
                     </tr>
+
+                    {Number(invoiceData.breakdown.totalPosCharge) > 0 && (
+                      <>
+                        <tr>
+                          <td className="px-4 py-2 text-slate-500 text-xs text-right">
+                            Restaurant CGST (2.5%)
+                          </td>
+                          <td className="px-4 py-2 text-right">{Number(invoiceData.breakdown.posCgst).toFixed(2)}</td>
+                        </tr>
+                        <tr>
+                          <td className="px-4 py-2 text-slate-500 text-xs text-right">
+                            Restaurant SGST (2.5%)
+                          </td>
+                          <td className="px-4 py-2 text-right">{Number(invoiceData.breakdown.posSgst).toFixed(2)}</td>
+                        </tr>
+                      </>
+                    )}
                   </tbody>
                   <tfoot className="bg-slate-50 font-semibold text-slate-900 border-t border-slate-300">
                     <tr>
-                      <td className="px-4 py-4 text-right text-base">Grand Total</td>
+                      <td className="px-4 py-4 text-right text-base flex justify-end gap-4 items-center">
+                         {invoiceData.folio.status === 'SETTLED' && (
+                           <button onClick={() => window.print()} className="text-sm font-medium text-blue-600 hover:underline">
+                             Print Invoice
+                           </button>
+                         )}
+                         Grand Total
+                      </td>
                       <td className="px-4 py-4 text-right text-base text-blue-600">₹{Number(invoiceData.breakdown.grandTotal).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                     </tr>
                   </tfoot>
                 </table>
               </div>
 
-              <div className="mt-8 flex justify-end space-x-3">
+              <div className="mt-8 flex justify-end space-x-3 print:hidden">
                 <button
                   type="button"
                   onClick={() => setInvoiceData(null)}

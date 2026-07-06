@@ -103,7 +103,7 @@ export default function PosPage() {
     if (orderItems.length === 0) return;
     setIsSubmittingOrder(true);
     try {
-      await apiFetch('/pos/orders', {
+      const order = await apiFetch('/pos/orders', {
         method: 'POST',
         body: JSON.stringify({
           bookingId: selectedBookingId || null,
@@ -114,11 +114,21 @@ export default function PosPage() {
           }))
         }),
       });
-      alert('KOT Generated Successfully!');
+
+      // Automatically settle the order (Cash or Room Post) based on selection
+      await apiFetch(`/pos/orders/${order.id}/settle`, {
+        method: 'POST',
+        body: JSON.stringify({
+          method: selectedBookingId ? 'ROOM_POST' : 'CASH',
+          bookingId: selectedBookingId || undefined
+        })
+      });
+
+      alert(selectedBookingId ? 'KOT Generated & Posted to Room!' : 'KOT Generated & Settled as Cash!');
       setOrderItems([]);
       setSelectedBookingId('');
     } catch (err: any) {
-      alert(err.message || 'Failed to generate order');
+      alert(err.message || 'Failed to process order');
     } finally {
       setIsSubmittingOrder(false);
     }

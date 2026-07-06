@@ -104,7 +104,13 @@ export default function BookingsPage() {
       await apiFetch(`/bookings/${id}/${action}`, { method: 'POST' });
       fetchData();
     } catch (err: any) {
-      alert(err.message || `Failed to ${action}`);
+      if (action === 'check-out' && err.message && (err.message.includes('unsettled') || err.message.includes('UNPAID'))) {
+        if (window.confirm(`${err.message}\n\nWould you like to go to Billing to settle the account now?`)) {
+          window.location.href = '/dashboard/billing';
+        }
+      } else {
+        alert(err.message || `Failed to ${action}`);
+      }
     }
   };
 

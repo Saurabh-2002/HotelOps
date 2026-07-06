@@ -96,11 +96,30 @@ export class BookingsService {
 
   async checkOut(tenantId: string, id: string) {
     return this.prisma.withTenant(tenantId, async (tx) => {
-      const booking = await tx.booking.findUnique({ where: { id } });
+      // Acquire row-level lock on the booking to prevent race with POS/Settlement
+      const lockCheck: any[] = await tx.$queryRaw`SELECT id FROM "Booking" WHERE id = ${id} AND "tenantId" = ${tenantId} FOR UPDATE`;
+      if (lockCheck.length === 0) throw new NotFoundException('Booking not found');
+
+      const booking = await tx.booking.findUnique({ 
+        where: { id },
+        include: { folios: true, posOrders: true }
+      });
+      
       if (!booking) throw new NotFoundException('Booking not found');
       if (booking.status !== 'CHECKED_IN') {
         throw new ConflictException(`Cannot check out — booking is ${booking.status}`);
       }
+
+      const hasUnpaidOrders = booking.posOrders.some(order => order.paymentStatus === 'UNPAID');
+      if (hasUnpaidOrders) {
+        throw new ConflictException('Cannot check out — booking has UNPAID POS orders');
+      }
+
+      const hasSettledFolio = booking.folios.some(folio => folio.status === 'SETTLED');
+      if (!hasSettledFolio) {
+        throw new ConflictException('Cannot check out — booking has an unsettled account');
+      }
+
       return tx.booking.update({
         where: { id },
         data: { status: 'CHECKED_OUT' },
