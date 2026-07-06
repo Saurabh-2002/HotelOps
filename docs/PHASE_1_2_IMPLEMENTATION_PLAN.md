@@ -213,10 +213,14 @@
 
 ## TASK-10: Freeze POS Item Descriptions at Order Creation
 - **Related Issue IDs**: ISSUE-12
-- **Priority**: P1 | **Status**: PENDING
+- **Priority**: P1 | **Status**: COMPLETE
 - **Objective**: Persist transactional item name at POS order creation so invoices reflect sale-time data, not mutable MenuItem state.
 - **Business Reason**: Financial audit trail must prove what was actually sold.
 - **Root Cause Addressed**: `PosOrderItem` lacks `itemName`; invoice generation reads live `MenuItem.name`.
 - **Implementation Scope**: Add `itemName` to `PosOrderItem`, persist at order creation, read from persisted value in invoice calculation.
 - **Dependencies**: TASK-09.
 - **Recommended Branch Name**: `fix/pos-transactional-item-description`
+- **Verification Result**:
+  - Implementation summary: Safely added `itemName` to `PosOrderItem`, capturing the sale-time description. Invoices generate from immutable data. 
+  - Tests executed/results: 87/87 backend tests passed.
+  - Acceptance-criteria result: PASSED.

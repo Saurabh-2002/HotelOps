@@ -172,7 +172,7 @@
 
 ## ISSUE-12: POS Order Item Lacks Transactional Item Name
 - **Priority**: P1
-- **Status**: OPEN
+- **Status**: COMPLETE
 - **Description**: `PosOrderItem` preserves transactional `unitPrice` but does not preserve the transactional item name/description. The immutable settled invoice snapshot therefore freezes settlement-time mutable `MenuItem.name`, not the item identity/description recorded at sale/KOT creation time.
 - **Root Cause**: `PosOrderItem` schema lacks an `itemName` column; invoice generation joins on live `MenuItem.name`.
 - **Operational Impact**: Changing a menu item's display name after order creation retroactively changes unsettled invoice line-item names.
@@ -183,3 +183,24 @@
 - **Files/Modules**: `schema.prisma`, `pos.service.ts`, `billing.service.ts`, migration
 - **Required Tests**: MenuItem mutation after order creation does not change OPEN invoice; MenuItem mutation before settlement does not change snapshot.
 - **Explicit Acceptance Criteria**: OPEN and SETTLED invoices use only transactional (sale-time) item names and prices from `PosOrderItem`, never live `MenuItem` data.
+- **Verification Result**:
+  - Implementation summary: Added `itemName` to `PosOrderItem` and mapped it safely on creation. 
+  - Acceptance-criteria result: PASSED.
+
+## ISSUE-13: `setup-rls-role.ts` SQL Construction Vulnerability
+- **Priority**: P3
+- **Status**: BACKLOG
+- **Description**: `setup-rls-role.ts` interpolates variables directly into DDL strings without `quote_ident()` or parameterized execution. Currently safe but bad practice.
+- **Dependencies**: None.
+
+## ISSUE-14: Sequence Ownership Validation
+- **Priority**: P3
+- **Status**: BACKLOG
+- **Description**: `setup-rls-role.ts` grants sequences without explicitly checking ownership matches the migration role, safe currently since schema has no sequences.
+- **Dependencies**: None.
+
+## ISSUE-15: Documentation Staleness
+- **Priority**: P2
+- **Status**: BACKLOG
+- **Description**: Several PHASE 1-2 governing documents do not reflect recent fixes and tasks.
+- **Dependencies**: None.
