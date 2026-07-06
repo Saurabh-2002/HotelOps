@@ -125,7 +125,7 @@
 
 ## ISSUE-04: Checkout Allows Unpaid Folios
 - **Priority**: P1
-- **Status**: OPEN
+- **Status**: COMPLETE
 - **Description**: Guests can check out while their folio remains 'OPEN' (unpaid).
 - **Code Evidence**: 'bookings.service.ts' -> 'checkOut()' lacks folio validation.
 - **Root Cause**: Settlement workflow is not integrated with the checkout lifecycle.
@@ -137,10 +137,13 @@
 - **Files/Modules**: 'bookings.service.ts'
 - **Required Tests**: Checkout with OPEN folio (blocked), Checkout with SETTLED folio (allowed).
 - **Explicit Acceptance Criteria**: Checkout strictly requires a 'SETTLED' folio.
+- **Verification Result**:
+  - Implementation summary: Added constraints to `bookings.service.ts` to block checkout if there are unsetttled folios or unpaid POS orders. Modified `bookings/page.tsx` to display a user-friendly prompt directing staff to Billing when blocked.
+  - Acceptance-criteria result: PASSED.
 
 ## ISSUE-05: Frontend Hides POS Charges
 - **Priority**: P2
-- **Status**: OPEN
+- **Status**: COMPLETE
 - **Description**: The invoice modal hardcodes only Room Charges, ignoring POS data.
 - **Code Evidence**: 'BillingPage' in 'web/src/app/dashboard/billing/page.tsx'.
 - **Root Cause**: Incomplete UI implementation.
@@ -152,6 +155,9 @@
 - **Files/Modules**: 'billing/page.tsx'
 - **Required Tests**: Visual verification of POS lines and total matches.
 - **Explicit Acceptance Criteria**: Frontend accurately reflects the backend 'breakdown' including F&B items.
+- **Verification Result**:
+  - Implementation summary: Updated `billing/page.tsx` invoice table to iterate over `posOrders`, displaying specific `itemName` and `unitPrice`, calculating subtotals, and distinctly separating Room GST from Restaurant GST.
+  - Acceptance-criteria result: PASSED.
 
 ## ISSUE-11: Application Role Lacks Runtime Database Privileges
 - **Priority**: P0
