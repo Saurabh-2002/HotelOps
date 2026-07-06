@@ -137,7 +137,7 @@ describe('TASK-03 Billing & Settlement Integration (e2e)', () => {
       expect(res.body.snapshotVersion).toBe(1);
       expect(res.body.invoiceSnapshot).toBeDefined();
 
-      const dbFolios = await prisma.withBypassRls(tx => tx.folio.findMany());
+      const dbFolios = await prisma.withBypassRls(tx => tx.folio.findMany({ where: { tenantId: tenant1.id } }));
       expect(dbFolios.length).toBe(1);
       expect(dbFolios[0].status).toBe('SETTLED');
 

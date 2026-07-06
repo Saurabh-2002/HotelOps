@@ -196,6 +196,7 @@ model PosOrderItem {
   menuItem    MenuItem @relation(fields: [menuItemId], references: [id])
   quantity    Int
   unitPrice   Decimal  @db.Decimal(10, 2)
+  itemName    String?
   notes       String?
   createdAt   DateTime @default(now())
 

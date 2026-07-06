@@ -41,9 +41,9 @@ export class BillingService {
         createdAt: new Date(order.createdAt).toISOString(),
         totalAmount: orderSubtotal,
         items: order.items.map((item: any) => ({
-          menuItem: { name: item.menuItem.name },
+          menuItem: { name: item.itemName }, // Use transactional name
           quantity: item.quantity,
-          unitPrice: Number(item.unitPrice),
+          unitPrice: Number(item.unitPrice), // Use transactional price
         }))
       };
     });

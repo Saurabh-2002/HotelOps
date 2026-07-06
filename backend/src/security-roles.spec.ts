@@ -476,8 +476,8 @@ describe('TASK-09: Application-Role Security (database-connected)', () => {
       );
 
       await appClient.query(
-        `INSERT INTO "PosOrderItem" (id, "orderId", "menuItemId", quantity, "unitPrice", "createdAt")
-         VALUES (gen_random_uuid(), $1, $2, 1, 500, NOW())`, [order.id, menuItem.id]
+        `INSERT INTO "PosOrderItem" (id, "orderId", "menuItemId", quantity, "unitPrice", "itemName", "createdAt")
+         VALUES (gen_random_uuid(), $1, $2, 1, 500, 'Security Burger', NOW())`, [order.id, menuItem.id]
       );
 
       // Simulate ROOM_POST: lock booking, update payment status
