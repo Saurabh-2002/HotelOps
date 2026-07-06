@@ -62,6 +62,7 @@ export class PosService {
           menuItemId: item.menuItemId,
           quantity: item.quantity,
           unitPrice,
+          itemName: menuItem.name,
           notes: item.notes,
         };
       });
