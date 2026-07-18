@@ -257,7 +257,7 @@ export default function RoomsPage() {
         <div className="bg-white border border-slate-200 rounded-xl shadow-sm flex flex-col">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm text-slate-600">
-              <thead className="bg-slate-50 text-slate-700 text-xs uppercase font-semibold border-b border-slate-200">
+              <thead className="bg-slate-50 text-slate-700 text-xs uppercase font-semibold border-b border-slate-200 whitespace-nowrap">
                 <tr>
                   <th className="px-6 py-4"><div className="flex items-center gap-2"><Hash className="w-4 h-4 text-slate-400" /> Room No.</div></th>
                   <th className="px-6 py-4"><div className="flex items-center gap-2"><Tag className="w-4 h-4 text-slate-400" /> Type</div></th>
@@ -443,7 +443,7 @@ export default function RoomsPage() {
                 )}
               </div>
 
-              <div className="grid grid-cols-[1fr_1fr_1.5fr] gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">Floor</label>
                   <div className="relative">

@@ -288,7 +288,7 @@ function BookingsContent() {
         <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm text-slate-600">
-              <thead className="bg-slate-50 text-slate-700 text-xs uppercase font-semibold border-b border-slate-200">
+              <thead className="bg-slate-50 text-slate-700 text-xs uppercase font-semibold border-b border-slate-200 whitespace-nowrap">
                 <tr>
                   <th className="px-6 py-4">Guest</th>
                   <th className="px-6 py-4">Room</th>
@@ -407,7 +407,7 @@ function BookingsContent() {
                     </p>
                   )}
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">Check-in Date <span className="text-rose-500">*</span></label>
                     <DatePicker
@@ -429,7 +429,7 @@ function BookingsContent() {
 
                 {/* Guest Count */}
                 {roomType && (
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-slate-700 mb-1">
                         <span className="inline-flex items-center gap-1.5"><Users className="w-3.5 h-3.5" /> Adults <span className="text-rose-500">*</span></span>
@@ -531,7 +531,7 @@ function BookingsContent() {
                               }}
                             />
                           </div>
-                          <div className="grid grid-cols-2 gap-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                               <label className="block text-xs font-medium text-slate-700 mb-1">ID Type <span className="text-rose-500">*</span></label>
                               <Select
@@ -578,7 +578,7 @@ function BookingsContent() {
                               </div>
                             </div>
                             
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                               <div>
                                 <label className="block text-xs font-medium text-slate-700 mb-1">Phone Number <span className="text-rose-500">*</span></label>
                                 <Input 

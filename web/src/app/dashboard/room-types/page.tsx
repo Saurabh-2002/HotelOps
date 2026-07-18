@@ -143,7 +143,7 @@ export default function RoomTypesPage() {
               {isEditing.id ? 'Edit Room Type' : 'New Room Type'}
             </h2>
             <form onSubmit={handleSave} className="space-y-5">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium text-slate-700">Name</label>
                   <input type="text" required value={isEditing.name} onChange={e => setIsEditing({...isEditing, name: e.target.value})} className="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-slate-900 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm" />
