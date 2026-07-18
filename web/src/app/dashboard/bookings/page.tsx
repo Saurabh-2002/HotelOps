@@ -265,7 +265,7 @@ function BookingsContent() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
         <div>
           <h3 className="text-2xl font-bold text-slate-800">Bookings</h3>
           <p className="text-slate-500 text-sm mt-1">Manage reservations, check-ins, and departures.</p>

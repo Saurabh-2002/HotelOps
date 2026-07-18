@@ -120,14 +120,14 @@ export default function OrderCustomizationModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-900/50 backdrop-blur-sm p-0 sm:p-4"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="max-w-lg w-full bg-white rounded-2xl shadow-xl border border-slate-200 animate-in zoom-in-95 duration-200 max-h-[85vh] flex flex-col">
+      <div className="max-w-lg w-full bg-white rounded-t-2xl sm:rounded-2xl shadow-xl border border-slate-200 animate-in slide-in-from-bottom-4 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200 max-h-[85vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-start gap-4 p-5 pb-4 border-b border-slate-100">
+        <div className="flex items-start gap-4 p-5 pb-4 border-b border-slate-100 sticky top-0 bg-white z-10 rounded-t-2xl">
           {item.imageUrl ? (
             <img
               src={item.imageUrl}

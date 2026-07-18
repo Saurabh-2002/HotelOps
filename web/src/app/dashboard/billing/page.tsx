@@ -168,7 +168,7 @@ export default function BillingPage() {
           @page { size: auto; margin: 0mm; }
         `}
       </style>
-      <div className="flex justify-between items-center print:hidden">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 print:hidden">
         <div>
           <h3 className="text-2xl font-bold text-slate-800">Billing & Invoices</h3>
           <p className="text-slate-500 text-sm mt-1">Generate folios and settle payments for stays and restaurant orders.</p>

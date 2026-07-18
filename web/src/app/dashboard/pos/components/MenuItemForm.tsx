@@ -493,10 +493,10 @@ export default function MenuItemForm({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm">
-      <div className="animate-in fade-in zoom-in-95 duration-200 w-full max-w-2xl max-h-[90vh] flex flex-col bg-white rounded-xl shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-900/50 backdrop-blur-sm p-0 sm:p-4">
+      <div className="animate-in slide-in-from-bottom-4 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200 w-full max-w-2xl max-h-[90vh] flex flex-col bg-white rounded-t-2xl sm:rounded-xl shadow-2xl overflow-hidden">
         {/* ── Header ── */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0 sticky top-0 bg-white z-10 rounded-t-2xl">
           <h2 className="text-lg font-semibold text-slate-900">
             {editingItem ? 'Edit Menu Item' : 'Add Menu Item'}
           </h2>

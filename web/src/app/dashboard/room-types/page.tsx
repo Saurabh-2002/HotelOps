@@ -77,7 +77,7 @@ export default function RoomTypesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Room Types</h1>
           <p className="text-slate-500 mt-1">Define categories for your rooms — rates, occupancy limits, and extras.</p>
@@ -160,7 +160,7 @@ export default function RoomTypesPage() {
                   <label className="text-sm font-medium text-slate-700">Base Rate (₹)</label>
                   <input type="number" required value={isEditing.baseRate} onChange={e => setIsEditing({...isEditing, baseRate: Number(e.target.value)})} className="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-slate-900 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm" />
                 </div>
-                <div className="col-span-2 space-y-1.5">
+                <div className="sm:col-span-2 space-y-1.5">
                   <label className="text-sm font-medium text-slate-700">Description</label>
                   <input type="text" value={isEditing.description || ''} onChange={e => setIsEditing({...isEditing, description: e.target.value})} placeholder="e.g. Spacious room with city view" className="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-slate-900 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm" />
                 </div>

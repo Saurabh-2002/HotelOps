@@ -55,7 +55,7 @@ export default function CurrentOrderPanel({
   );
 
   return (
-    <Card className="w-96 flex flex-col border-none shadow-md shrink-0 bg-white overflow-hidden">
+    <Card className="w-full md:w-96 flex flex-col border-none shadow-md shrink-0 bg-white overflow-hidden">
       {/* Header */}
       <CardHeader className="p-4 border-b border-slate-100 bg-slate-50 pb-4">
         <div className="flex items-center justify-between">

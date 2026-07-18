@@ -76,10 +76,10 @@ export default function DashboardOverview() {
       {isLoading ? (
         <DashboardStatsSkeleton />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
           {user?.activeModules?.includes('HOTEL') && (
             <>
-              <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex items-center">
+              <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-slate-200 flex items-center">
                 <div className="p-3 rounded-full bg-blue-50 text-blue-600 mr-4">
                   <BedDouble className="w-6 h-6" />
                 </div>
@@ -89,7 +89,7 @@ export default function DashboardOverview() {
                 </div>
               </div>
               
-              <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex items-center">
+              <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-slate-200 flex items-center">
                 <div className="p-3 rounded-full bg-emerald-50 text-emerald-600 mr-4">
                   <Users className="w-6 h-6" />
                 </div>
@@ -99,7 +99,7 @@ export default function DashboardOverview() {
                 </div>
               </div>
 
-              <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex items-center">
+              <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-slate-200 flex items-center">
                 <div className="p-3 rounded-full bg-indigo-50 text-indigo-600 mr-4">
                   <CalendarDays className="w-6 h-6" />
                 </div>
@@ -109,7 +109,7 @@ export default function DashboardOverview() {
                 </div>
               </div>
 
-              <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex items-center">
+              <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-slate-200 flex items-center">
                 <div className="p-3 rounded-full bg-amber-50 text-amber-600 mr-4">
                   <Users className="w-6 h-6" />
                 </div>
@@ -122,7 +122,7 @@ export default function DashboardOverview() {
           )}
 
           {user?.activeModules?.includes('RESTAURANT') && (
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex items-center">
+            <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-slate-200 flex items-center">
               <div className="p-3 rounded-full bg-rose-50 text-rose-600 mr-4">
                 <UtensilsCrossed className="w-6 h-6" />
               </div>

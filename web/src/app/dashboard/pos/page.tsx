@@ -309,7 +309,7 @@ export default function PosPage() {
 
   return (
     <div className="h-full flex flex-col space-y-4">
-      <div className="flex justify-between items-end">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-3">
         <div>
           <h3 className="text-2xl font-bold text-slate-800">Restaurant POS</h3>
           <p className="text-slate-500 text-sm mt-1">Manage orders and room service.</p>
@@ -346,7 +346,7 @@ export default function PosPage() {
         /* ======================== MENU SETUP TAB ======================== */
         <div className="space-y-4">
           {/* Summary Stats */}
-          <div className="flex gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Card className="flex-1 border-none shadow-sm">
               <CardContent className="p-4 flex items-center gap-3">
                 <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center">
@@ -395,7 +395,7 @@ export default function PosPage() {
                   <p className="text-sm mt-1">Click &quot;Add Menu Item&quot; to get started.</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 xl:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                   {allMenuItems.map(item => (
                     <div
                       key={item.id}
@@ -449,7 +449,7 @@ export default function PosPage() {
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-2">
+                      <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shrink-0 ml-2">
                         <Button variant="ghost" size="icon" onClick={() => handleOpenForm(item)} title="Edit">
                           <Pencil className="w-4 h-4" />
                         </Button>
@@ -466,7 +466,7 @@ export default function PosPage() {
         </div>
       ) : (
         /* ======================== TERMINAL TAB ======================== */
-        <div className="flex-1 flex gap-6 overflow-hidden min-h-[500px]">
+        <div className="flex-1 flex flex-col md:flex-row gap-4 md:gap-6 overflow-hidden min-h-0 md:min-h-[500px]">
           {/* Left: Menu Grid */}
           <Card className="flex-1 flex flex-col border-none shadow-md overflow-hidden bg-white">
             <div className="flex overflow-x-auto p-4 border-b border-slate-100 gap-2 shrink-0">
@@ -483,7 +483,7 @@ export default function PosPage() {
               ))}
             </div>
             <div className="flex-1 overflow-y-auto p-4 bg-slate-50/50">
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                 {filteredMenu.map(item => (
                   <MenuItemCard
                     key={item.id}
