@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import useSWR from 'swr';
-import { BedDouble } from 'lucide-react';
+import { BedDouble, X } from 'lucide-react';
 import { apiFetch, fetcher } from '@/lib/api';
 import AlertDialog from '@/components/AlertDialog';
 import { CardGridSkeleton } from '@/components/Skeletons';
@@ -137,12 +137,20 @@ export default function RoomTypesPage() {
 
       {/* Modal */}
       {isEditing && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white border border-slate-200 p-8 rounded-xl shadow-xl max-w-2xl w-full">
-            <h2 className="text-xl font-bold text-slate-900 mb-6">
-              {isEditing.id ? 'Edit Room Type' : 'New Room Type'}
-            </h2>
-            <form onSubmit={handleSave} className="space-y-5">
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-50 animate-in fade-in duration-200">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-lg shadow-xl border border-slate-200 animate-in slide-in-from-bottom-4 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200 max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between p-6 border-b border-slate-100 sticky top-0 bg-white z-10 rounded-t-2xl">
+              <h2 className="text-xl font-bold text-slate-800">
+                {isEditing.id ? 'Edit Room Type' : 'New Room Type'}
+              </h2>
+              <button 
+                onClick={() => setIsEditing(null)}
+                className="text-slate-400 hover:text-slate-600 transition-colors p-1"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleSave} className="overflow-y-auto p-6 space-y-5">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium text-slate-700">Name</label>

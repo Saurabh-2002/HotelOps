@@ -255,101 +255,142 @@ export default function RoomsPage() {
         <TableSkeleton rows={5} />
       ) : (
         <div className="bg-white border border-slate-200 rounded-xl shadow-sm flex flex-col">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm text-slate-600">
-              <thead className="bg-slate-50 text-slate-700 text-xs uppercase font-semibold border-b border-slate-200 whitespace-nowrap">
-                <tr>
-                  <th className="px-6 py-4"><div className="flex items-center gap-2"><Hash className="w-4 h-4 text-slate-400" /> Room No.</div></th>
-                  <th className="px-6 py-4"><div className="flex items-center gap-2"><Tag className="w-4 h-4 text-slate-400" /> Type</div></th>
-                  <th className="px-6 py-4"><div className="flex items-center gap-2"><Layers className="w-4 h-4 text-slate-400" /> Floor</div></th>
-                  <th className="px-6 py-4"><div className="flex items-center gap-2"><IndianRupee className="w-4 h-4 text-slate-400" /> Base Rate</div></th>
-                  <th className="px-6 py-4"><div className="flex items-center gap-2"><Activity className="w-4 h-4 text-slate-400" /> Status</div></th>
-                  <th className="px-6 py-4 text-right"><div className="flex items-center justify-end gap-2"><Wrench className="w-4 h-4 text-slate-400" /> Actions</div></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {rooms.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-slate-500">
-                      <BedDouble className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                      <p>
-                        {searchQuery 
-                          ? `No rooms found matching "${searchQuery}".` 
-                          : 'No rooms found. Add your first room to get started.'}
-                      </p>
-                    </td>
-                  </tr>
-                ) : (
-                  rooms.map((room) => (
-                    <tr key={room.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-6 py-4 font-medium text-slate-900">
-                        {room.bookings && room.bookings.length > 0 ? (
-                          <Link 
-                            href={`/dashboard/bookings?roomId=${room.id}`} 
-                            className="text-blue-600 hover:text-blue-700 hover:underline flex items-center group transition-colors"
-                            title="View Active Booking"
-                          >
-                            {room.roomNumber}
-                            <span className="ml-2 relative flex h-2.5 w-2.5">
-                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-blue-500"></span>
-                            </span>
-                          </Link>
-                        ) : (
-                          room.roomNumber
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        <Badge variant="secondary">
-                          {getRoomTypeName(room)}
-                        </Badge>
-                      </td>
-                      <td className="px-6 py-4">{room.floor || '—'}</td>
-                      <td className="px-6 py-4 font-medium">₹{Number(room.baseRate).toLocaleString()}</td>
-                      <td className="px-6 py-4">
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${
-                          room.status === 'CLEAN' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
-                          room.status === 'DIRTY' ? 'bg-amber-50 text-amber-700 border-amber-100' :
-                          room.status === 'OUT_OF_ORDER' ? 'bg-rose-50 text-rose-700 border-rose-100' :
-                          'bg-slate-50 text-slate-700 border-slate-200'
-                        }`}>
-                          {room.status.replace(/_/g, ' ')}
-                          {room.status === 'OUT_OF_ORDER' && room.maintenanceNotes && (
-                            <div className="relative group flex items-center justify-center">
-                              <Info className="w-3.5 h-3.5 text-rose-400 group-hover:text-rose-600 transition-colors cursor-help" />
-                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-[200px] bg-slate-900 text-white text-xs rounded shadow-lg p-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-pre-wrap text-center font-normal tracking-normal">
-                                {room.maintenanceNotes}
-                                <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-slate-900 rotate-45"></div>
-                              </div>
-                            </div>
+          {rooms.length === 0 ? (
+            <div className="px-6 py-12 text-center text-slate-500">
+              <BedDouble className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+              <p>
+                {searchQuery 
+                  ? `No rooms found matching "${searchQuery}".` 
+                  : 'No rooms found. Add your first room to get started.'}
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* Mobile Card View (< 640px) */}
+              <div className="sm:hidden flex flex-col divide-y divide-slate-100">
+                {rooms.map((room) => (
+                  <div key={room.id} className="p-4 flex flex-col space-y-3">
+                    <div className="flex justify-between items-start">
+                      <div className="flex flex-col">
+                        <span className="font-bold text-slate-900 text-lg">
+                          {room.bookings && room.bookings.length > 0 ? (
+                            <Link 
+                              href={`/dashboard/bookings?roomId=${room.id}`} 
+                              className="text-blue-600 flex items-center"
+                            >
+                              Room {room.roomNumber} <span className="ml-2 w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+                            </Link>
+                          ) : (
+                            `Room ${room.roomNumber}`
                           )}
                         </span>
-                      </td>
-                      <td className="px-6 py-4 text-right space-x-2">
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          onClick={() => handleOpenModal(room)}
-                          title="Edit Room"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                          onClick={() => setRoomToDelete(room.id)}
-                          title="Delete Room"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </td>
+                        <span className="text-xs text-slate-500 mt-0.5">{getRoomTypeName(room)} · Floor {room.floor || '—'}</span>
+                      </div>
+                      <span className={`inline-flex items-center px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${
+                        room.status === 'CLEAN' ? 'bg-emerald-100 text-emerald-800' :
+                        room.status === 'DIRTY' ? 'bg-amber-100 text-amber-800' :
+                        room.status === 'OUT_OF_ORDER' ? 'bg-rose-100 text-rose-800' :
+                        'bg-slate-100 text-slate-800'
+                      }`}>
+                        {room.status.replace(/_/g, ' ')}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-end pt-1 border-t border-slate-50">
+                      <span className="font-semibold text-slate-900">₹{Number(room.baseRate).toLocaleString()}</span>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" className="h-8 px-3 text-xs" onClick={() => handleOpenModal(room)}>Edit</Button>
+                        <Button variant="outline" size="sm" className="h-8 px-3 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200" onClick={() => setRoomToDelete(room.id)}>Delete</Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Desktop Table View (>= 640px) */}
+              <div className="hidden sm:block overflow-x-auto">
+                <table className="w-full text-left text-sm text-slate-600">
+                  <thead className="bg-slate-50 text-slate-700 text-xs uppercase font-semibold border-b border-slate-200 whitespace-nowrap">
+                    <tr>
+                      <th className="px-6 py-4"><div className="flex items-center gap-2"><Hash className="w-4 h-4 text-slate-400" /> Room No.</div></th>
+                      <th className="px-6 py-4"><div className="flex items-center gap-2"><Tag className="w-4 h-4 text-slate-400" /> Type</div></th>
+                      <th className="px-6 py-4"><div className="flex items-center gap-2"><Layers className="w-4 h-4 text-slate-400" /> Floor</div></th>
+                      <th className="px-6 py-4"><div className="flex items-center gap-2"><IndianRupee className="w-4 h-4 text-slate-400" /> Base Rate</div></th>
+                      <th className="px-6 py-4"><div className="flex items-center gap-2"><Activity className="w-4 h-4 text-slate-400" /> Status</div></th>
+                      <th className="px-6 py-4 text-right"><div className="flex items-center justify-end gap-2"><Wrench className="w-4 h-4 text-slate-400" /> Actions</div></th>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {rooms.map((room) => (
+                      <tr key={room.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-6 py-4 font-medium text-slate-900">
+                          {room.bookings && room.bookings.length > 0 ? (
+                            <Link 
+                              href={`/dashboard/bookings?roomId=${room.id}`} 
+                              className="text-blue-600 hover:text-blue-700 hover:underline flex items-center group transition-colors"
+                              title="View Active Booking"
+                            >
+                              {room.roomNumber}
+                              <span className="ml-2 relative flex h-2.5 w-2.5">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-blue-500"></span>
+                              </span>
+                            </Link>
+                          ) : (
+                            room.roomNumber
+                          )}
+                        </td>
+                        <td className="px-6 py-4">
+                          <Badge variant="secondary">
+                            {getRoomTypeName(room)}
+                          </Badge>
+                        </td>
+                        <td className="px-6 py-4">{room.floor || '—'}</td>
+                        <td className="px-6 py-4 font-medium">₹{Number(room.baseRate).toLocaleString()}</td>
+                        <td className="px-6 py-4">
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${
+                            room.status === 'CLEAN' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+                            room.status === 'DIRTY' ? 'bg-amber-50 text-amber-700 border-amber-100' :
+                            room.status === 'OUT_OF_ORDER' ? 'bg-rose-50 text-rose-700 border-rose-100' :
+                            'bg-slate-50 text-slate-700 border-slate-200'
+                          }`}>
+                            {room.status.replace(/_/g, ' ')}
+                            {room.status === 'OUT_OF_ORDER' && room.maintenanceNotes && (
+                              <div className="relative group flex items-center justify-center">
+                                <Info className="w-3.5 h-3.5 text-rose-400 group-hover:text-rose-600 transition-colors cursor-help" />
+                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-[200px] bg-slate-900 text-white text-xs rounded shadow-lg p-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-pre-wrap text-center font-normal tracking-normal">
+                                  {room.maintenanceNotes}
+                                  <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-slate-900 rotate-45"></div>
+                                </div>
+                              </div>
+                            )}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-right space-x-2">
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            onClick={() => handleOpenModal(room)}
+                            title="Edit Room"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                            onClick={() => setRoomToDelete(room.id)}
+                            title="Delete Room"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
           
           {/* Pagination Controls */}
           {totalPages > 1 && (
@@ -379,9 +420,9 @@ export default function RoomsPage() {
       )}
 
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="relative w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-200 animate-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between p-6 border-b border-slate-100">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-900/50 backdrop-blur-sm p-0 sm:p-4 animate-in fade-in duration-200">
+          <div className="relative w-full max-w-2xl bg-white rounded-t-2xl sm:rounded-2xl shadow-xl border border-slate-200 animate-in slide-in-from-bottom-4 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200 max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between p-6 border-b border-slate-100 sticky top-0 bg-white z-10 rounded-t-2xl">
               <h3 className="text-lg font-semibold text-slate-900">
                 {editingRoomId ? 'Edit Room' : 'Add New Room'}
               </h3>
@@ -393,7 +434,7 @@ export default function RoomsPage() {
               </button>
             </div>
             
-            <form onSubmit={handleSaveRoom} className="p-6 space-y-5">
+            <form onSubmit={handleSaveRoom} className="overflow-y-auto p-6 space-y-5">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">Room Number</label>
                 <div className="relative">

@@ -225,7 +225,56 @@ export default function BillingPage() {
             <TableSkeleton rows={5} />
           ) : (
             <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-              <div className="overflow-x-auto">
+              <div className="sm:hidden flex flex-col divide-y divide-slate-100">
+                {paginatedBookings.length === 0 ? (
+                  <div className="px-6 py-12 text-center text-slate-500">
+                    <Receipt className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                    <p>No active or checked-out bookings found requiring billing.</p>
+                  </div>
+                ) : (
+                  paginatedBookings.map((booking) => {
+                    const primaryGuest = booking.guestRecords[0]?.fullName || 'Unknown';
+                    return (
+                      <div key={booking.id} className="p-4 flex flex-col space-y-3">
+                        <div className="flex justify-between items-start">
+                          <div className="flex flex-col">
+                            <span className="font-bold text-slate-900 text-lg">{primaryGuest}</span>
+                            <span className="text-xs text-slate-500 mt-0.5">Room {booking.room.roomNumber} · {booking.room.roomType?.name || booking.room.legacyType || '—'}</span>
+                          </div>
+                          <Badge variant={booking.status === 'CHECKED_OUT' ? 'secondary' : 'default'} className={booking.status === 'CHECKED_OUT' ? 'bg-slate-100 text-slate-600' : 'bg-green-100 text-green-700'}>
+                            {booking.status.replace('_', ' ')}
+                          </Badge>
+                        </div>
+                        
+                        <div className="flex items-center text-sm text-slate-700 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                          <Calendar className="w-4 h-4 mr-2 text-slate-400" />
+                          {new Date(booking.checkInDate).toLocaleDateString()} - {new Date(booking.checkOutDate).toLocaleDateString()}
+                        </div>
+                        
+                        <div className="flex justify-end pt-1 border-t border-slate-50">
+                          <Button
+                            onClick={() => handleGenerateInvoice(booking.id)}
+                            disabled={invoiceLoadingId === booking.id}
+                            variant="outline"
+                            size="sm"
+                            className="h-8 text-xs"
+                          >
+                            {invoiceLoadingId === booking.id ? (
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            ) : (
+                              <FileText className="w-4 h-4 mr-2" />
+                            )}
+                            Generate Invoice
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Desktop Table View (>= 640px) */}
+              <div className="hidden sm:block overflow-x-auto">
                 <table className="w-full text-left text-sm text-slate-600">
                   <thead className="bg-slate-50 text-slate-700 text-xs uppercase font-semibold border-b border-slate-200">
                     <tr>
@@ -341,7 +390,53 @@ export default function BillingPage() {
             <TableSkeleton rows={5} />
           ) : (
             <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-              <div className="overflow-x-auto">
+              <div className="sm:hidden flex flex-col divide-y divide-slate-100">
+                {paginatedPosOrders.length === 0 ? (
+                  <div className="px-6 py-12 text-center text-slate-500">
+                    <UtensilsCrossed className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                    <p>No restaurant orders found.</p>
+                  </div>
+                ) : (
+                  paginatedPosOrders.map((order) => {
+                    const isPaid = order.paymentStatus === 'PAID_CASH';
+                    const isRoom = order.paymentStatus === 'POSTED_TO_ROOM';
+                    const isUnpaid = order.paymentStatus === 'UNPAID';
+                    
+                    return (
+                      <div key={order.id} className="p-4 flex flex-col space-y-3">
+                        <div className="flex justify-between items-start">
+                          <div className="flex flex-col">
+                            <span className="font-bold text-slate-900 text-lg">#{order.id.substring(0, 6).toUpperCase()}</span>
+                            <span className="text-xs text-slate-500 mt-0.5">{new Date(order.createdAt).toLocaleString()}</span>
+                          </div>
+                          {isPaid && <Badge className="bg-green-100 text-green-700">Paid (Cash)</Badge>}
+                          {isRoom && <Badge className="bg-blue-100 text-blue-700">Room Post</Badge>}
+                          {isUnpaid && <Badge variant="secondary" className="bg-amber-100 text-amber-700">Unpaid</Badge>}
+                        </div>
+                        
+                        <div className="flex justify-between items-end pt-1 border-t border-slate-50">
+                          <div className="flex flex-col">
+                            <span className="text-xs text-slate-500 mb-1">{order.items.reduce((sum: number, i: any) => sum + i.quantity, 0)} Items</span>
+                            <span className="font-semibold text-slate-900 text-lg">₹{Number(order.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                          </div>
+                          <Button
+                            onClick={() => setSelectedPosOrder(order)}
+                            variant="outline"
+                            size="sm"
+                            className="h-8 text-xs"
+                          >
+                            <Receipt className="w-4 h-4 mr-2" />
+                            View Bill
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Desktop Table View (>= 640px) */}
+              <div className="hidden sm:block overflow-x-auto">
                 <table className="w-full text-left text-sm text-slate-600">
                   <thead className="bg-slate-50 text-slate-700 text-xs uppercase font-semibold border-b border-slate-200">
                     <tr>
@@ -435,11 +530,10 @@ export default function BillingPage() {
         </div>
       )}
 
-      {/* POS Order Receipt Modal */}
       {selectedPosOrder && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto overflow-x-hidden bg-slate-900/60 backdrop-blur-sm p-4 py-10 print:p-0 print:bg-white print:block print:relative print:overflow-visible">
-          <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-xl border border-slate-200 my-auto print:shadow-none print:border-none print:rounded-none print:my-0 print:max-w-full">
-            <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50 rounded-t-2xl print:hidden">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center overflow-y-auto overflow-x-hidden bg-slate-900/60 backdrop-blur-sm p-0 sm:p-4 print:p-0 print:bg-white print:block print:relative print:overflow-visible">
+          <div className="relative w-full max-w-lg bg-white rounded-t-2xl sm:rounded-2xl shadow-xl border border-slate-200 animate-in slide-in-from-bottom-4 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200 max-h-[90vh] flex flex-col print:shadow-none print:border-none print:rounded-none print:my-0 print:max-w-full">
+            <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50 sticky top-0 z-10 rounded-t-2xl print:hidden">
               <div>
                 <h3 className="text-xl font-bold text-slate-900">Restaurant Bill</h3>
                 <p className="text-sm text-slate-500">Order #{selectedPosOrder.id.substring(0, 8).toUpperCase()}</p>
@@ -552,9 +646,9 @@ export default function BillingPage() {
 
       {/* Invoice Modal for Hotel */}
       {invoiceData && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto overflow-x-hidden bg-slate-900/60 backdrop-blur-sm p-4 py-10 print:p-0 print:bg-white print:block print:relative print:overflow-visible">
-          <div className="relative w-full max-w-4xl bg-white rounded-2xl shadow-xl border border-slate-200 my-auto print:shadow-none print:border-none print:rounded-none print:my-0 print:max-w-full print:bg-white">
-            <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50 rounded-t-2xl print:hidden">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center overflow-y-auto overflow-x-hidden bg-slate-900/60 backdrop-blur-sm p-0 sm:p-4 print:p-0 print:bg-white print:block print:relative print:overflow-visible">
+          <div className="relative w-full max-w-4xl bg-white rounded-t-2xl sm:rounded-2xl shadow-xl border border-slate-200 animate-in slide-in-from-bottom-4 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200 max-h-[90vh] flex flex-col print:shadow-none print:border-none print:rounded-none print:my-0 print:max-w-full print:bg-white">
+            <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50 sticky top-0 z-10 rounded-t-2xl print:hidden">
               <div>
                 <h3 className="text-xl font-bold text-slate-900">Tax Invoice Preview</h3>
                 <p className="text-sm text-slate-500">Folio #{invoiceData.folio.id.substring(0, 8).toUpperCase()}</p>

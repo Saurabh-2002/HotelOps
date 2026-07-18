@@ -4,7 +4,7 @@ import { Suspense, useState, useMemo } from 'react';
 import useSWR from 'swr';
 import { useSearchParams } from 'next/navigation';
 import { apiFetch, fetcher } from '@/lib/api';
-import { Plus, Calendar, LogIn, LogOut, XCircle, Loader2, CalendarDays, Users, Baby, IndianRupee } from 'lucide-react';
+import { Plus, Calendar, LogIn, LogOut, XCircle, Loader2, CalendarDays, Users, Baby, IndianRupee, X } from 'lucide-react';
 import AlertDialog from '@/components/AlertDialog';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import { TableSkeleton } from '@/components/Skeletons';
@@ -285,108 +285,146 @@ function BookingsContent() {
       {isLoading ? (
         <TableSkeleton rows={5} />
       ) : (
-        <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm text-slate-600">
-              <thead className="bg-slate-50 text-slate-700 text-xs uppercase font-semibold border-b border-slate-200 whitespace-nowrap">
-                <tr>
-                  <th className="px-6 py-4">Guest</th>
-                  <th className="px-6 py-4">Room</th>
-                  <th className="px-6 py-4">Dates</th>
-                  <th className="px-6 py-4">Status</th>
-                  <th className="px-6 py-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {bookings.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
-                      <CalendarDays className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                      <p>No bookings found. Create a reservation to get started.</p>
-                    </td>
-                  </tr>
-                ) : (
-                  bookings.map((booking) => {
-                    const primaryGuest = booking.guestRecords[0];
-                    return (
-                      <tr key={booking.id} className="hover:bg-slate-50 transition-colors">
-                        <td className="px-6 py-4">
-                          <div className="font-medium text-slate-900">{primaryGuest?.fullName || 'Unknown'}</div>
-                          <div className="text-xs text-slate-500">{primaryGuest?.idType}: {primaryGuest?.idNumber}</div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="font-medium text-slate-900">Room {booking.room.roomNumber}</div>
-                          <div className="text-xs text-slate-500">{booking.room.roomType?.name || booking.room.legacyType || '—'}</div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center text-slate-700">
-                            <Calendar className="w-4 h-4 mr-1.5 text-slate-400" />
-                            {new Date(booking.checkInDate).toLocaleDateString()} - {new Date(booking.checkOutDate).toLocaleDateString()}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          {getStatusBadge(booking.status)}
-                        </td>
-                        <td className="px-6 py-4 text-right space-x-2">
-                          {booking.status === 'RESERVED' && (
-                            <>
+        <div className="bg-white border border-slate-200 rounded-xl shadow-sm flex flex-col overflow-hidden">
+          {bookings.length === 0 ? (
+            <div className="px-6 py-12 text-center text-slate-500">
+              <CalendarDays className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+              <p>No bookings found. Create a reservation to get started.</p>
+            </div>
+          ) : (
+            <>
+              {/* Mobile Card View (< 640px) */}
+              <div className="sm:hidden flex flex-col divide-y divide-slate-100">
+                {bookings.map((booking) => {
+                  const primaryGuest = booking.guestRecords[0];
+                  return (
+                    <div key={booking.id} className="p-4 flex flex-col space-y-3">
+                      <div className="flex justify-between items-start">
+                        <div className="flex flex-col">
+                          <span className="font-bold text-slate-900 text-lg">{primaryGuest?.fullName || 'Unknown'}</span>
+                          <span className="text-xs text-slate-500 mt-0.5">Room {booking.room.roomNumber} · {booking.room.roomType?.name || booking.room.legacyType || '—'}</span>
+                        </div>
+                        {getStatusBadge(booking.status)}
+                      </div>
+                      
+                      <div className="flex items-center text-sm text-slate-700 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                        <Calendar className="w-4 h-4 mr-2 text-slate-400" />
+                        {new Date(booking.checkInDate).toLocaleDateString()} - {new Date(booking.checkOutDate).toLocaleDateString()}
+                      </div>
+                      
+                      <div className="flex justify-end pt-1 border-t border-slate-50 gap-2">
+                        {booking.status === 'RESERVED' && (
+                          <>
+                            <Button variant="outline" size="sm" className="h-8 text-xs text-red-600 hover:bg-red-50 hover:text-red-700 border-red-200" onClick={() => handleAction(booking.id, 'cancel')}>Cancel</Button>
+                            <Button variant="outline" size="sm" className="h-8 text-xs text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 border-emerald-200" onClick={() => handleAction(booking.id, 'check-in')}>Check In</Button>
+                          </>
+                        )}
+                        {booking.status === 'CHECKED_IN' && (
+                          <Button variant="outline" size="sm" className="h-8 text-xs text-blue-600 hover:bg-blue-50 hover:text-blue-700 border-blue-200" onClick={() => handleAction(booking.id, 'check-out')}>Check Out</Button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Desktop Table View (>= 640px) */}
+              <div className="hidden sm:block overflow-x-auto">
+                <table className="w-full text-left text-sm text-slate-600">
+                  <thead className="bg-slate-50 text-slate-700 text-xs uppercase font-semibold border-b border-slate-200 whitespace-nowrap">
+                    <tr>
+                      <th className="px-6 py-4">Guest</th>
+                      <th className="px-6 py-4">Room</th>
+                      <th className="px-6 py-4">Dates</th>
+                      <th className="px-6 py-4">Status</th>
+                      <th className="px-6 py-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {bookings.map((booking) => {
+                      const primaryGuest = booking.guestRecords[0];
+                      return (
+                        <tr key={booking.id} className="hover:bg-slate-50 transition-colors">
+                          <td className="px-6 py-4">
+                            <div className="font-medium text-slate-900">{primaryGuest?.fullName || 'Unknown'}</div>
+                            <div className="text-xs text-slate-500">{primaryGuest?.idType}: {primaryGuest?.idNumber}</div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="font-medium text-slate-900">Room {booking.room.roomNumber}</div>
+                            <div className="text-xs text-slate-500">{booking.room.roomType?.name || booking.room.legacyType || '—'}</div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center text-slate-700">
+                              <Calendar className="w-4 h-4 mr-1.5 text-slate-400" />
+                              {new Date(booking.checkInDate).toLocaleDateString()} - {new Date(booking.checkOutDate).toLocaleDateString()}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            {getStatusBadge(booking.status)}
+                          </td>
+                          <td className="px-6 py-4 text-right space-x-2">
+                            {booking.status === 'RESERVED' && (
+                              <>
+                                <Button 
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleAction(booking.id, 'check-in')}
+                                  title="Check In"
+                                  className="text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
+                                >
+                                  <LogIn className="w-4 h-4" />
+                                </Button>
+                                <Button 
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleAction(booking.id, 'cancel')}
+                                  title="Cancel Booking"
+                                  className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                                >
+                                  <XCircle className="w-4 h-4" />
+                                </Button>
+                              </>
+                            )}
+                            {booking.status === 'CHECKED_IN' && (
                               <Button 
                                 variant="ghost"
                                 size="icon"
-                                onClick={() => handleAction(booking.id, 'check-in')}
-                                title="Check In"
-                                className="text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
+                                onClick={() => handleAction(booking.id, 'check-out')}
+                                title="Check Out"
+                                className="text-blue-600 hover:bg-blue-50 hover:text-blue-700"
                               >
-                                <LogIn className="w-4 h-4" />
+                                <LogOut className="w-4 h-4" />
                               </Button>
-                              <Button 
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleAction(booking.id, 'cancel')}
-                                title="Cancel Booking"
-                                className="text-red-600 hover:bg-red-50 hover:text-red-700"
-                              >
-                                <XCircle className="w-4 h-4" />
-                              </Button>
-                            </>
-                          )}
-                          {booking.status === 'CHECKED_IN' && (
-                            <Button 
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleAction(booking.id, 'check-out')}
-                              title="Check Out"
-                              className="text-blue-600 hover:bg-blue-50 hover:text-blue-700"
-                            >
-                              <LogOut className="w-4 h-4" />
-                            </Button>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
         </div>
       )}
 
       {/* New Booking Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overflow-x-hidden bg-slate-900/50 backdrop-blur-sm p-4">
-          <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-xl border border-slate-200">
-            <div className="flex items-center justify-between p-6 border-b border-slate-100">
-              <h3 className="text-lg font-semibold text-slate-900">New Booking</h3>
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-900/50 backdrop-blur-sm p-0 sm:p-4">
+          <div className="relative w-full max-w-2xl bg-white rounded-t-2xl sm:rounded-2xl shadow-xl border border-slate-200 animate-in slide-in-from-bottom-4 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200 max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between p-6 border-b border-slate-100 sticky top-0 bg-white z-10 rounded-t-2xl">
+              <h3 className="text-lg font-semibold text-slate-900">
+                New Booking
+              </h3>
               <button 
                 onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600"
+                className="text-slate-400 hover:text-slate-600 transition-colors"
               >
-                ✕
+                <X className="w-5 h-5" />
               </button>
             </div>
             
-            <form onSubmit={handleAddBooking} className="p-6 space-y-5">
+            <form onSubmit={handleAddBooking} className="overflow-y-auto p-6 space-y-6">
               
               <div className="space-y-4">
                 <h4 className="text-sm font-semibold text-slate-900 uppercase tracking-wider">Stay Details</h4>
