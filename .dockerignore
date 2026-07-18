@@ -1,0 +1,9 @@
+node_modules
+backend/node_modules
+backend/dist
+web/node_modules
+web/.next
+.env
+backend/.env
+web/.env
+.git
