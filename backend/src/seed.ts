@@ -4,6 +4,8 @@
  * Creates a super-admin, two demo tenants (small lodge + larger hotel),
  * and demo users/rooms for each tenant.
  * 
+ * Idempotent: safe to run multiple times. Uses ON CONFLICT to skip duplicates.
+ * 
  * Run with: npm run seed
  */
 
@@ -28,32 +30,39 @@ async function main() {
 
   // --- Super Admin (no tenant) ---
   console.log('\n--- Creating Super Admin ---');
-  const existingSuperAdmin = await sql`SELECT id FROM "User" WHERE email = 'super@hotelops.com'`;
-  if (existingSuperAdmin.length === 0) {
-    await sql`SET app.bypass_rls = 'true'`;
-    await sql`INSERT INTO "User" (id, name, email, "hashedPassword", role, "createdAt", "updatedAt")
-      VALUES (gen_random_uuid(), 'Super Admin', 'super@hotelops.com', ${hashedPassword}, 'SUPER_ADMIN', NOW(), NOW())`;
-    console.log('  Super Admin: super@hotelops.com');
-  } else {
-    console.log('  Super Admin already exists, skipping.');
-  }
+  await sql`SET app.bypass_rls = 'true'`;
+  const [superResult] = await sql`INSERT INTO "User" (id, name, email, "hashedPassword", role, "createdAt", "updatedAt")
+    VALUES (gen_random_uuid(), 'Super Admin', 'super@hotelops.com', ${hashedPassword}, 'SUPER_ADMIN', NOW(), NOW())
+    ON CONFLICT (email) DO NOTHING
+    RETURNING email`;
+  console.log(superResult ? '  Created: super@hotelops.com' : '  Already exists: super@hotelops.com');
 
   // --- Tenant 1: Sunrise Lodge (small, no restaurant) ---
   console.log('\n--- Creating Tenant 1: Sunrise Lodge ---');
   await sql`SET app.bypass_rls = 'true'`;
 
-  const [tenant1] = await sql`INSERT INTO "Tenant" (id, name, gstin, "subscriptionTier", "activeModules", "createdAt", "updatedAt")
-    VALUES (gen_random_uuid(), 'Sunrise Lodge', '29ABCDE1234F1Z1', 'BASIC', '{}', NOW(), NOW())
-    RETURNING id, name`;
+  // Use a deterministic approach: find or create
+  let tenant1Row = await sql`SELECT id, name FROM "Tenant" WHERE name = 'Sunrise Lodge' LIMIT 1`;
+  if (tenant1Row.length === 0) {
+    tenant1Row = await sql`INSERT INTO "Tenant" (id, name, gstin, "subscriptionTier", "activeModules", "createdAt", "updatedAt")
+      VALUES (gen_random_uuid(), 'Sunrise Lodge', '29ABCDE1234F1Z1', 'BASIC', '{}', NOW(), NOW())
+      RETURNING id, name`;
+  }
+  const tenant1 = tenant1Row[0];
   console.log('  Tenant:', tenant1.name, '| ID:', tenant1.id);
 
-  await sql`INSERT INTO "User" (id, "tenantId", name, email, "hashedPassword", role, "createdAt", "updatedAt")
-    VALUES (gen_random_uuid(), ${tenant1.id}, 'Rajesh Kumar', 'rajesh@sunriselodge.com', ${hashedPassword}, 'OWNER', NOW(), NOW())`;
-  console.log('  Owner: rajesh@sunriselodge.com');
-
-  await sql`INSERT INTO "User" (id, "tenantId", name, email, "hashedPassword", role, "createdAt", "updatedAt")
-    VALUES (gen_random_uuid(), ${tenant1.id}, 'Amit Sharma', 'amit@sunriselodge.com', ${hashedPassword}, 'FRONT_DESK', NOW(), NOW())`;
-  console.log('  Front Desk: amit@sunriselodge.com');
+  // Users for Sunrise Lodge
+  const slUsers = [
+    { name: 'Rajesh Kumar', email: 'rajesh@sunriselodge.com', role: 'OWNER' },
+    { name: 'Amit Sharma',  email: 'amit@sunriselodge.com',   role: 'FRONT_DESK' },
+  ];
+  for (const u of slUsers) {
+    const [r] = await sql`INSERT INTO "User" (id, "tenantId", name, email, "hashedPassword", role, "createdAt", "updatedAt")
+      VALUES (gen_random_uuid(), ${tenant1.id}, ${u.name}, ${u.email}, ${hashedPassword}, ${u.role}, NOW(), NOW())
+      ON CONFLICT (email) DO NOTHING
+      RETURNING email`;
+    console.log(r ? `  Created ${u.role}: ${u.email}` : `  Already exists: ${u.email}`);
+  }
 
   // 5 rooms for the small lodge
   const lodge_rooms = [
@@ -63,17 +72,25 @@ async function main() {
     { num: '201', type: 'Standard', floor: '2', rate: 1200 },
     { num: '202', type: 'Deluxe',   floor: '2', rate: 1800 },
   ];
+  let lodgeRoomCount = 0;
   for (const r of lodge_rooms) {
-    await sql`INSERT INTO "Room" (id, "tenantId", "roomNumber", "roomType", floor, "baseRate", "createdAt", "updatedAt")
-      VALUES (gen_random_uuid(), ${tenant1.id}, ${r.num}, ${r.type}, ${r.floor}, ${r.rate}, NOW(), NOW())`;
+    const [res] = await sql`INSERT INTO "Room" (id, "tenantId", "roomNumber", "legacyType", floor, "baseRate", "createdAt", "updatedAt")
+      VALUES (gen_random_uuid(), ${tenant1.id}, ${r.num}, ${r.type}, ${r.floor}, ${r.rate}, NOW(), NOW())
+      ON CONFLICT ("tenantId", "roomNumber") DO NOTHING
+      RETURNING id`;
+    if (res) lodgeRoomCount++;
   }
-  console.log('  Rooms created:', lodge_rooms.length);
+  console.log(`  Rooms created: ${lodgeRoomCount} new (${lodge_rooms.length - lodgeRoomCount} already existed)`);
 
   // --- Tenant 2: Grand Palace Hotel (larger, with restaurant) ---
   console.log('\n--- Creating Tenant 2: Grand Palace Hotel ---');
-  const [tenant2] = await sql`INSERT INTO "Tenant" (id, name, gstin, "subscriptionTier", "activeModules", "createdAt", "updatedAt")
-    VALUES (gen_random_uuid(), 'Grand Palace Hotel', '27FGHIJ5678K3Z9', 'PRO', '{"RESTAURANT","HOUSEKEEPING"}', NOW(), NOW())
-    RETURNING id, name`;
+  let tenant2Row = await sql`SELECT id, name FROM "Tenant" WHERE name = 'Grand Palace Hotel' LIMIT 1`;
+  if (tenant2Row.length === 0) {
+    tenant2Row = await sql`INSERT INTO "Tenant" (id, name, gstin, "subscriptionTier", "activeModules", "createdAt", "updatedAt")
+      VALUES (gen_random_uuid(), 'Grand Palace Hotel', '27FGHIJ5678K3Z9', 'PRO', '{"RESTAURANT","HOUSEKEEPING"}', NOW(), NOW())
+      RETURNING id, name`;
+  }
+  const tenant2 = tenant2Row[0];
   console.log('  Tenant:', tenant2.name, '| ID:', tenant2.id);
 
   // Users for Grand Palace
@@ -86,9 +103,11 @@ async function main() {
     { name: 'Ravi Accountant',email: 'ravi@grandpalace.com',    role: 'ACCOUNTANT' },
   ];
   for (const u of gpUsers) {
-    await sql`INSERT INTO "User" (id, "tenantId", name, email, "hashedPassword", role, "createdAt", "updatedAt")
-      VALUES (gen_random_uuid(), ${tenant2.id}, ${u.name}, ${u.email}, ${hashedPassword}, ${u.role}, NOW(), NOW())`;
-    console.log(`  ${u.role}: ${u.email}`);
+    const [r] = await sql`INSERT INTO "User" (id, "tenantId", name, email, "hashedPassword", role, "createdAt", "updatedAt")
+      VALUES (gen_random_uuid(), ${tenant2.id}, ${u.name}, ${u.email}, ${hashedPassword}, ${u.role}, NOW(), NOW())
+      ON CONFLICT (email) DO NOTHING
+      RETURNING email`;
+    console.log(r ? `  Created ${u.role}: ${u.email}` : `  Already exists: ${u.email}`);
   }
 
   // 15 rooms for the larger hotel
@@ -109,11 +128,15 @@ async function main() {
     { num: '401', type: 'Penthouse', floor: '4', rate: 12000 },
     { num: '402', type: 'Penthouse', floor: '4', rate: 12000 },
   ];
+  let hotelRoomCount = 0;
   for (const r of hotel_rooms) {
-    await sql`INSERT INTO "Room" (id, "tenantId", "roomNumber", "roomType", floor, "baseRate", "createdAt", "updatedAt")
-      VALUES (gen_random_uuid(), ${tenant2.id}, ${r.num}, ${r.type}, ${r.floor}, ${r.rate}, NOW(), NOW())`;
+    const [res] = await sql`INSERT INTO "Room" (id, "tenantId", "roomNumber", "legacyType", floor, "baseRate", "createdAt", "updatedAt")
+      VALUES (gen_random_uuid(), ${tenant2.id}, ${r.num}, ${r.type}, ${r.floor}, ${r.rate}, NOW(), NOW())
+      ON CONFLICT ("tenantId", "roomNumber") DO NOTHING
+      RETURNING id`;
+    if (res) hotelRoomCount++;
   }
-  console.log('  Rooms created:', hotel_rooms.length);
+  console.log(`  Rooms created: ${hotelRoomCount} new (${hotel_rooms.length - hotelRoomCount} already existed)`);
 
   console.log('\n✅ Seed complete!');
   console.log('Login credentials for all users: password = admin123');

@@ -32,7 +32,7 @@ describe('PosService (Integration)', () => {
       const t2 = await tx.tenant.create({ data: { name: `Test Tenant 2 ${ts}` } });
       tenant2Id = t2.id;
 
-      const r1 = await tx.room.create({ data: { tenantId, roomNumber: `POS-${ts}`, roomType: 'DLX', baseRate: 1000 } });
+      const r1 = await tx.room.create({ data: { tenantId, roomNumber: `POS-${ts}`, legacyType: 'DLX', baseRate: 1000 } });
       
       const b1 = await tx.booking.create({
         data: { tenantId, roomId: r1.id, status: 'CHECKED_IN', checkInDate: new Date(), checkOutDate: new Date() }
@@ -195,3 +195,4 @@ describe('PosService (Integration)', () => {
     });
   });
 });
+

@@ -28,8 +28,8 @@ describe('POS Settlement Concurrency Reproduction', () => {
       const tenant = await tx.tenant.create({ data: { name: `Tenant ${ts}` } });
       tenantId = tenant.id;
 
-      const room1 = await tx.room.create({ data: { tenantId, roomNumber: `R1-${ts}`, roomType: 'DLX', baseRate: 100 } });
-      const room2 = await tx.room.create({ data: { tenantId, roomNumber: `R2-${ts}`, roomType: 'DLX', baseRate: 100 } });
+      const room1 = await tx.room.create({ data: { tenantId, roomNumber: `R1-${ts}`, legacyType: 'DLX', baseRate: 100 } });
+      const room2 = await tx.room.create({ data: { tenantId, roomNumber: `R2-${ts}`, legacyType: 'DLX', baseRate: 100 } });
 
       const b1 = await tx.booking.create({ data: { tenantId, roomId: room1.id, status: 'CHECKED_IN', checkInDate: new Date(), checkOutDate: new Date() } });
       bookingId1 = b1.id;
@@ -138,3 +138,4 @@ describe('POS Settlement Concurrency Reproduction', () => {
     }
   });
 });
+

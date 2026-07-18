@@ -31,11 +31,18 @@ enum BookingStatus {
   CHECKED_IN
   CHECKED_OUT
   CANCELLED
+  NO_SHOW
 }
 
 enum FolioStatus {
   OPEN
   SETTLED
+}
+
+enum RoomStatus {
+  CLEAN
+  DIRTY
+  OUT_OF_ORDER
 }
 
 model Tenant {
@@ -54,6 +61,8 @@ model Tenant {
   folios            Folio[]
   menuItems         MenuItem[]
   posOrders         PosOrder[]
+  propertySettings  PropertySettings?
+  roomTypes         RoomType[]
 }
 
 model User {
@@ -75,15 +84,20 @@ model Room {
   tenantId    String
   tenant      Tenant   @relation(fields: [tenantId], references: [id])
   roomNumber  String
-  roomType    String
+  roomTypeId  String?  // Made optional for migration backfill
+  roomType    RoomType? @relation(fields: [roomTypeId], references: [id])
+  legacyType  String?  // Temporarily store old roomType string for migration
   floor       String?
   baseRate    Decimal  @db.Decimal(10, 2)
+  status      RoomStatus @default(CLEAN)
+  maintenanceNotes String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   bookings    Booking[]
 
   @@unique([tenantId, roomNumber])
+  @@index([tenantId])
 }
 
 model Booking {
@@ -114,6 +128,9 @@ model GuestRecord {
   fullName            String
   idType              String
   idNumber            String
+  phone               String   @default("")
+  address             String   @default("")
+  email               String?
   encryptedFrroData   String?
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
@@ -156,18 +173,34 @@ enum PaymentStatus {
 }
 
 model MenuItem {
-  id          String   @id @default(uuid())
-  tenantId    String
-  tenant      Tenant   @relation(fields: [tenantId], references: [id])
-  name        String
-  category    String
-  price       Decimal  @db.Decimal(10, 2)
-  isAvailable Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id              String   @id @default(uuid())
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  itemCode        String?              // Human-readable code, e.g., "MC102"
+  name            String
+  category        String
+  subcategory     String?              // e.g., "Chicken", "Paneer"
+  price           Decimal  @db.Decimal(10, 2)  // Base/flat price (when no sizes)
+  sizes           Json?                // e.g., ["Quarter","Half","Full"]
+  sizePricing     Json?                // e.g., {"quarter":249,"half":449,"full":799}
+  isAvailable     Boolean  @default(true)
+  isArchived      Boolean  @default(false)
+  imageUrl        String?
+  isBestSeller    Boolean  @default(false)
+  isChefSpecial   Boolean  @default(false)
+  isRecommended   Boolean  @default(false)
+  preparationTime Int?                 // Minutes
+  rating          Decimal? @db.Decimal(2, 1)   // e.g., 4.8
+  ratingCount     Int      @default(0)
+  spiceLevels     Json?                // e.g., ["Mild","Medium","Hot"]
+  extras          Json?                // e.g., [{"name":"Extra Cheese","price":30}]
+  comboWith       Json?                // e.g., [{"itemCode":"MC105","name":"Naan","price":40}]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  orderItems  PosOrderItem[]
+  orderItems      PosOrderItem[]
 
+  @@unique([tenantId, itemCode])
   @@index([tenantId])
 }
 
@@ -189,16 +222,65 @@ model PosOrder {
 }
 
 model PosOrderItem {
-  id          String   @id @default(uuid())
-  orderId     String
-  order       PosOrder @relation(fields: [orderId], references: [id])
-  menuItemId  String
-  menuItem    MenuItem @relation(fields: [menuItemId], references: [id])
-  quantity    Int
-  unitPrice   Decimal  @db.Decimal(10, 2)
-  itemName    String?
-  notes       String?
-  createdAt   DateTime @default(now())
+  id             String   @id @default(uuid())
+  orderId        String
+  order          PosOrder @relation(fields: [orderId], references: [id])
+  menuItemId     String
+  menuItem       MenuItem @relation(fields: [menuItemId], references: [id])
+  quantity       Int
+  unitPrice      Decimal  @db.Decimal(10, 2)
+  itemName       String?
+  selectedSize   String?           // e.g., "Half"
+  spiceLevel     String?           // e.g., "Medium"
+  extras         Json?             // e.g., [{"name":"Extra Cheese","price":30}]
+  comboItems     Json?             // e.g., [{"name":"Naan","price":40}]
+  notes          String?
+  createdAt      DateTime @default(now())
 
   @@index([orderId])
+}
+
+model PropertySettings {
+  id                String   @id @default(uuid())
+  tenantId          String   @unique
+  tenant            Tenant   @relation(fields: [tenantId], references: [id])
+  propertyName      String
+  legalName         String?
+  address           String?
+  city              String?
+  state             String?
+  pinCode           String?
+  country           String   @default("India")
+  phone             String?
+  email             String?
+  gstin             String?
+  checkInTime       String   @default("14:00")
+  checkOutTime      String   @default("11:00")
+  invoicePrefix     String   @default("INV-")
+  timezone          String   @default("Asia/Kolkata")
+  currency          String   @default("INR")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model RoomType {
+  id             String   @id @default(uuid())
+  tenantId       String
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+  name           String
+  description    String?
+  baseOccupancy  Int      @default(2)
+  maxAdults      Int      @default(3)
+  maxChildren    Int      @default(2)
+  baseRate       Decimal  @db.Decimal(10, 2)
+  extraAdultRate Decimal  @default(0) @db.Decimal(10, 2)
+  extraChildRate Decimal  @default(0) @db.Decimal(10, 2)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  rooms          Room[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
 }

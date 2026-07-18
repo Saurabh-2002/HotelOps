@@ -1,0 +1,23 @@
+-- AlterTable MenuItem: Add new columns
+ALTER TABLE "MenuItem" ADD COLUMN IF NOT EXISTS "itemCode" TEXT;
+ALTER TABLE "MenuItem" ADD COLUMN IF NOT EXISTS "subcategory" TEXT;
+ALTER TABLE "MenuItem" ADD COLUMN IF NOT EXISTS "sizes" JSONB;
+ALTER TABLE "MenuItem" ADD COLUMN IF NOT EXISTS "sizePricing" JSONB;
+ALTER TABLE "MenuItem" ADD COLUMN IF NOT EXISTS "isBestSeller" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "MenuItem" ADD COLUMN IF NOT EXISTS "isChefSpecial" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "MenuItem" ADD COLUMN IF NOT EXISTS "isRecommended" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "MenuItem" ADD COLUMN IF NOT EXISTS "preparationTime" INTEGER;
+ALTER TABLE "MenuItem" ADD COLUMN IF NOT EXISTS "rating" DECIMAL(2,1);
+ALTER TABLE "MenuItem" ADD COLUMN IF NOT EXISTS "ratingCount" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE "MenuItem" ADD COLUMN IF NOT EXISTS "spiceLevels" JSONB;
+ALTER TABLE "MenuItem" ADD COLUMN IF NOT EXISTS "extras" JSONB;
+ALTER TABLE "MenuItem" ADD COLUMN IF NOT EXISTS "comboWith" JSONB;
+
+-- UniqueIndex on itemCode per tenant
+CREATE UNIQUE INDEX IF NOT EXISTS "MenuItem_tenantId_itemCode_key" ON "MenuItem"("tenantId", "itemCode");
+
+-- AlterTable PosOrderItem: Add customization columns
+ALTER TABLE "PosOrderItem" ADD COLUMN IF NOT EXISTS "selectedSize" TEXT;
+ALTER TABLE "PosOrderItem" ADD COLUMN IF NOT EXISTS "spiceLevel" TEXT;
+ALTER TABLE "PosOrderItem" ADD COLUMN IF NOT EXISTS "extras" JSONB;
+ALTER TABLE "PosOrderItem" ADD COLUMN IF NOT EXISTS "comboItems" JSONB;

@@ -8,10 +8,14 @@ export class PosService {
 
   // --- Menu Items ---
 
-  async findAllMenuItems(tenantId: string) {
+  async findAllMenuItems(tenantId: string, includeUnavailable = false) {
     return this.prisma.withTenant(tenantId, async (tx) => {
+      const where: any = { tenantId, isArchived: false };
+      if (!includeUnavailable) {
+        where.isAvailable = true;
+      }
       return tx.menuItem.findMany({
-        where: { tenantId },
+        where,
         orderBy: [{ category: 'asc' }, { name: 'asc' }],
       });
     });
@@ -19,9 +23,52 @@ export class PosService {
 
   async createMenuItem(tenantId: string, dto: CreateMenuItemDto) {
     return this.prisma.withTenant(tenantId, async (tx) => {
+      // Validate itemCode uniqueness per tenant if provided
+      if (dto.itemCode) {
+        const existing = await tx.menuItem.findFirst({
+          where: { tenantId, itemCode: dto.itemCode },
+        });
+        if (existing) {
+          throw new ConflictException(`Item code "${dto.itemCode}" already exists`);
+        }
+      }
+
       return tx.menuItem.create({
         data: { ...dto, tenantId },
       });
+    });
+  }
+
+  async updateMenuItem(tenantId: string, id: string, dto: Partial<CreateMenuItemDto>) {
+    return this.prisma.withTenant(tenantId, async (tx) => {
+      // Validate itemCode uniqueness if being updated
+      if (dto.itemCode) {
+        const existing = await tx.menuItem.findFirst({
+          where: { tenantId, itemCode: dto.itemCode, NOT: { id } },
+        });
+        if (existing) {
+          throw new ConflictException(`Item code "${dto.itemCode}" already exists`);
+        }
+      }
+
+      return tx.menuItem.update({
+        where: { id },
+        data: dto,
+      });
+    });
+  }
+
+  async removeMenuItem(tenantId: string, id: string) {
+    return this.prisma.withTenant(tenantId, async (tx) => {
+      // Check if it's used in any orders. If yes, just soft-delete (archive) to preserve history.
+      const usage = await tx.posOrderItem.count({ where: { menuItemId: id } });
+      if (usage > 0) {
+        return tx.menuItem.update({
+          where: { id },
+          data: { isArchived: true },
+        });
+      }
+      return tx.menuItem.delete({ where: { id } });
     });
   }
 
@@ -56,13 +103,46 @@ export class PosService {
       const orderItemsData = dto.items.map((item) => {
         const menuItem = menuItems.find((m: any) => m.id === item.menuItemId);
         if (!menuItem) throw new NotFoundException(`Menu item ${item.menuItemId} not found`);
-        const unitPrice = Number(menuItem.price);
-        totalAmount += unitPrice * item.quantity;
+
+        // Determine unit price based on selected size or flat price
+        let unitPrice: number;
+        if (item.selectedSize && menuItem.sizePricing) {
+          const pricing = menuItem.sizePricing as Record<string, number>;
+          const matchedKey = Object.keys(pricing).find(
+            (k) => k.toLowerCase() === item.selectedSize!.toLowerCase()
+          );
+          if (matchedKey === undefined) {
+            throw new BadRequestException(`Size "${item.selectedSize}" not available for ${menuItem.name}`);
+          }
+          unitPrice = pricing[matchedKey];
+        } else {
+          unitPrice = Number(menuItem.price);
+        }
+
+        // Add extras pricing
+        let extrasTotal = 0;
+        if (item.extras && item.extras.length > 0) {
+          extrasTotal = item.extras.reduce((sum, extra) => sum + extra.price, 0);
+        }
+
+        // Add combo items pricing
+        let comboTotal = 0;
+        if (item.comboItems && item.comboItems.length > 0) {
+          comboTotal = item.comboItems.reduce((sum, combo) => sum + combo.price, 0);
+        }
+
+        const itemTotal = unitPrice + extrasTotal + comboTotal;
+        totalAmount += itemTotal * item.quantity;
+
         return {
           menuItemId: item.menuItemId,
           quantity: item.quantity,
-          unitPrice,
+          unitPrice: itemTotal,
           itemName: menuItem.name,
+          selectedSize: item.selectedSize || null,
+          spiceLevel: item.spiceLevel || null,
+          extras: item.extras || null,
+          comboItems: item.comboItems || null,
           notes: item.notes,
         };
       });

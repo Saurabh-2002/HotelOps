@@ -43,4 +43,13 @@ export class TenantsService {
       return tx.tenant.delete({ where: { id } });
     });
   }
+
+  async updateModules(id: string, modules: string[]) {
+    return this.prisma.withBypassRls(async (tx) => {
+      return tx.tenant.update({
+        where: { id },
+        data: { activeModules: modules }
+      });
+    });
+  }
 }

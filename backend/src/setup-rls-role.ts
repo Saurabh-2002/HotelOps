@@ -39,12 +39,13 @@ if (!connectionString) {
 const APPLICATION_TABLES = [
   'Tenant', 'User', 'Room', 'Booking', 'GuestRecord',
   'Folio', 'MenuItem', 'PosOrder', 'PosOrderItem',
+  'PropertySettings', 'RoomType',
 ];
 
 // Tenant-scoped tables that require RLS + FORCE RLS + tenant isolation policies
 const TENANT_TABLES = [
   'User', 'Room', 'Booking', 'GuestRecord', 'Folio',
-  'MenuItem', 'PosOrder',
+  'MenuItem', 'PosOrder', 'PropertySettings', 'RoomType',
 ];
 
 // PosOrderItem uses a join-based policy (no tenantId column)

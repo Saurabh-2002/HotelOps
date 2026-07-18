@@ -66,8 +66,10 @@ export class BillingService {
       guestName: guest.fullName || 'Unknown Guest',
       guestEmail: guest.email || '',
       guestPhone: guest.phone || '',
-      roomNumber: booking.room.number,
-      roomType: booking.room.type,
+      guestAddress: guest.address || '',
+      roomNumber: booking.room?.roomNumber || '',
+      roomType: booking.room?.roomType?.name || '',
+      legacyType: booking.room?.legacyType || '',
       checkInDate: checkIn.toISOString(),
       checkOutDate: checkOut.toISOString(),
       nights,
@@ -148,7 +150,9 @@ export class BillingService {
       const booking = await tx.booking.findFirst({
         where: { id: bookingId, tenantId },
         include: {
-          room: true,
+          room: {
+            include: { roomType: true }
+          },
           guestRecords: true,
           posOrders: {
             where: { paymentStatus: 'POSTED_TO_ROOM' },
@@ -198,7 +202,9 @@ export class BillingService {
       const booking = await tx.booking.findUnique({
         where: { id: bookingId },
         include: {
-          room: true,
+          room: {
+            include: { roomType: true }
+          },
           guestRecords: true,
           posOrders: {
             where: { paymentStatus: 'POSTED_TO_ROOM' },
@@ -213,16 +219,19 @@ export class BillingService {
       snapshot.settledAt = settledAt.toISOString();
 
       try {
-        const folio = await tx.folio.create({
-          data: {
-            tenantId,
-            bookingId,
-            status: 'SETTLED',
-            totalAmount: snapshot.grandTotal,
-            invoiceSnapshot: snapshot as any,
-            snapshotVersion: 1,
-            settledAt,
-          },
+        const folioData = {
+          tenantId,
+          bookingId,
+          status: 'SETTLED' as const,
+          totalAmount: snapshot.grandTotal,
+          invoiceSnapshot: snapshot as any,
+          snapshotVersion: 1,
+          settledAt,
+        };
+        const folio = await tx.folio.upsert({
+          where: { bookingId },
+          create: folioData,
+          update: folioData,
         });
         snapshot.folioId = folio.id;
         
@@ -234,11 +243,9 @@ export class BillingService {
 
         return finalFolio;
       } catch (err: any) {
-        if (err.code === 'P2002') {
-          throw new ConflictException('Folio is already settled');
-        }
         throw err;
       }
     });
   }
 }
+

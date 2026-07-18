@@ -67,7 +67,7 @@ describe('Phase 1-2 Operations End-to-End (e2e)', () => {
       ownerTokenB = jwtService.sign({ sub: ownerB.id, email: ownerB.email, role: ownerB.role, tenantId: tenantB.id });
       
       roomA = await tx.room.create({
-        data: { tenantId: tenantA.id, roomNumber: '101', roomType: 'DELUXE', baseRate: 5000 }
+        data: { tenantId: tenantA.id, roomNumber: '101', legacyType: 'DELUXE', baseRate: 5000 }
       });
   
       menuItemA = await tx.menuItem.create({
@@ -315,3 +315,4 @@ describe('Phase 1-2 Operations End-to-End (e2e)', () => {
     });
   });
 });
+

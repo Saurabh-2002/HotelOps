@@ -290,7 +290,7 @@ describe('TASK-09: Application-Role Security (database-connected)', () => {
     beforeAll(async () => {
       // Create room and booking for Tenant A using owner client
       const room = await ownerClient.query(
-        `INSERT INTO "Room" (id, "tenantId", "roomNumber", "roomType", "baseRate", "createdAt", "updatedAt")
+        `INSERT INTO "Room" (id, "tenantId", "roomNumber", "legacyType", "baseRate", "createdAt", "updatedAt")
          VALUES (gen_random_uuid(), $1, 'SEC-101', 'STD', 5000, NOW(), NOW())
          RETURNING id`, [tenantAId]
       );
@@ -333,7 +333,7 @@ describe('TASK-09: Application-Role Security (database-connected)', () => {
       await appClient.query(`SET LOCAL app.current_tenant_id = '${tenantAId}'`);
       await appClient.query(`SET LOCAL app.bypass_rls = 'false'`);
       const { rowCount } = await appClient.query(
-        `UPDATE "Room" SET "roomType" = 'STD' WHERE id = $1 AND "tenantId" = $2`, [roomAId, tenantAId]
+        `UPDATE "Room" SET "legacyType" = 'STD' WHERE id = $1 AND "tenantId" = $2`, [roomAId, tenantAId]
       );
       await appClient.query(`COMMIT`);
       expect(rowCount).toBe(1);
@@ -354,7 +354,7 @@ describe('TASK-09: Application-Role Security (database-connected)', () => {
       await appClient.query(`SET LOCAL app.bypass_rls = 'false'`);
       await expect(
         appClient.query(
-          `INSERT INTO "Room" (id, "tenantId", "roomNumber", "roomType", "baseRate", "createdAt", "updatedAt")
+          `INSERT INTO "Room" (id, "tenantId", "roomNumber", "legacyType", "baseRate", "createdAt", "updatedAt")
            VALUES (gen_random_uuid(), $1, 'XHACK-999', 'STD', 100, NOW(), NOW())`, [tenantAId]
         )
       ).rejects.toThrow(/row-level security/i);
@@ -366,7 +366,7 @@ describe('TASK-09: Application-Role Security (database-connected)', () => {
       await appClient.query(`SET LOCAL app.current_tenant_id = '${tenantBId}'`);
       await appClient.query(`SET LOCAL app.bypass_rls = 'false'`);
       const { rowCount } = await appClient.query(
-        `UPDATE "Room" SET "roomType" = 'HACKED' WHERE id = $1`, [roomAId]
+        `UPDATE "Room" SET "legacyType" = 'HACKED' WHERE id = $1`, [roomAId]
       );
       await appClient.query(`COMMIT`);
       expect(rowCount).toBe(0);
@@ -420,7 +420,7 @@ describe('TASK-09: Application-Role Security (database-connected)', () => {
 
       // Create room
       const room = await ownerClient.query(
-        `INSERT INTO "Room" (id, "tenantId", "roomNumber", "roomType", "baseRate", "createdAt", "updatedAt")
+        `INSERT INTO "Room" (id, "tenantId", "roomNumber", "legacyType", "baseRate", "createdAt", "updatedAt")
          VALUES (gen_random_uuid(), $1, 'SEC-201', 'DLX', 6000, NOW(), NOW())
          RETURNING id`, [tenantId]
       );

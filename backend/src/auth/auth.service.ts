@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
@@ -46,5 +46,52 @@ export class AuthService {
         activeModules: user.tenant?.activeModules || [],
       }
     };
+  }
+
+  async signup(dto: any) {
+    const { name, email, password, propertyName, city, country, modules } = dto;
+    
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    return this.prisma.withBypassRls(async (tx) => {
+      // Check if user already exists
+      const existingUser = await tx.user.findUnique({ where: { email } });
+      if (existingUser) {
+        throw new ConflictException('User with this email already exists');
+      }
+
+      // Create Tenant
+      const tenant = await tx.tenant.create({
+        data: {
+          name: propertyName,
+          activeModules: modules,
+        }
+      });
+
+      // Create Owner User
+      const user = await tx.user.create({
+        data: {
+          tenantId: tenant.id,
+          name,
+          email,
+          hashedPassword,
+          role: 'OWNER'
+        }
+      });
+
+      // Create Default PropertySettings
+      await tx.propertySettings.create({
+        data: {
+          tenantId: tenant.id,
+          propertyName,
+          city: city || '',
+          country: country || 'India',
+        }
+      });
+
+      // Log them in immediately
+      return this.login({...user, tenant});
+    });
   }
 }

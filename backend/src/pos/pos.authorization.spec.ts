@@ -41,8 +41,8 @@ describe('POS Settlement Authorization Matrix', () => {
 
       const diffTenant = await tx.tenant.create({ data: { name: `DiffTenant ${ts}` } });
 
-      const room1 = await tx.room.create({ data: { tenantId, roomNumber: `A1-${ts}`, roomType: 'DLX', baseRate: 100 } });
-      const diffRoom = await tx.room.create({ data: { tenantId: diffTenant.id, roomNumber: `B1-${ts}`, roomType: 'DLX', baseRate: 100 } });
+      const room1 = await tx.room.create({ data: { tenantId, roomNumber: `A1-${ts}`, legacyType: 'DLX', baseRate: 100 } });
+      const diffRoom = await tx.room.create({ data: { tenantId: diffTenant.id, roomNumber: `B1-${ts}`, legacyType: 'DLX', baseRate: 100 } });
 
       const b1 = await tx.booking.create({ data: { tenantId, roomId: room1.id, status: 'CHECKED_IN', checkInDate: new Date(), checkOutDate: new Date() } });
       bookingId1 = b1.id;
@@ -153,3 +153,4 @@ describe('POS Settlement Authorization Matrix', () => {
     expect(res.status).toBe(401);
   });
 });
+

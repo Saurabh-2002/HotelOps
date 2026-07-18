@@ -34,7 +34,7 @@ describe('TASK-10 POS Transactional Descriptions (Integration)', () => {
     await prisma.withBypassRls(async (tx) => {
       tenant = await tx.tenant.create({ data: { name: `T10-${ts}` } });
       room = await tx.room.create({
-        data: { tenantId: tenant.id, roomNumber: `R-${ts}`, roomType: 'DLX', baseRate: 1000 }
+        data: { tenantId: tenant.id, roomNumber: `R-${ts}`, legacyType: 'DLX', baseRate: 1000 }
       });
       const booking = await tx.booking.create({
         data: { tenantId: tenant.id, roomId: room.id, status: 'CHECKED_IN', checkInDate: new Date(), checkOutDate: new Date(Date.now() + 86400000) }
@@ -152,3 +152,4 @@ describe('TASK-10 POS Transactional Descriptions (Integration)', () => {
     expect(posOrder.items[0].unitPrice).toBe(150);
   });
 });
+

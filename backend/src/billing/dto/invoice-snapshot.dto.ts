@@ -9,10 +9,12 @@ export interface InvoiceSnapshotV1 {
 
   // GUEST/STAY PRESENTATION
   guestName: string;
-  guestEmail: string;
-  guestPhone: string;
+  guestEmail?: string;
+  guestPhone?: string;
+  guestAddress?: string;
   roomNumber: string;
-  roomType: string;
+  roomType?: string;
+  legacyType?: string;
   checkInDate: string; // ISO 8601
   checkOutDate: string; // ISO 8601
   nights: number;
@@ -48,3 +50,4 @@ export interface InvoiceSnapshotV1 {
   // STATUS/PRESENTATION
   status: 'SETTLED';
 }
+

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Body, Param, UseGuards, Request, ForbiddenException } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, Request, ForbiddenException } from '@nestjs/common';
 import { PosService } from './pos.service';
 import { CreateMenuItemDto, CreatePosOrderDto, SettlePosOrderDto } from './dto/pos.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -12,14 +12,26 @@ export class PosController {
 
   @Get('menu')
   @Roles('OWNER', 'MANAGER', 'FRONT_DESK', 'RESTAURANT')
-  getMenu(@Request() req: any) {
-    return this.posService.findAllMenuItems(req.user.tenantId);
+  getMenu(@Request() req: any, @Query('includeUnavailable') includeUnavailable?: string) {
+    return this.posService.findAllMenuItems(req.user.tenantId, includeUnavailable === 'true');
   }
 
   @Post('menu')
   @Roles('OWNER', 'MANAGER')
   createMenuItem(@Request() req: any, @Body() dto: CreateMenuItemDto) {
     return this.posService.createMenuItem(req.user.tenantId, dto);
+  }
+
+  @Patch('menu/:id')
+  @Roles('OWNER', 'MANAGER')
+  updateMenuItem(@Request() req: any, @Param('id') id: string, @Body() dto: Partial<CreateMenuItemDto>) {
+    return this.posService.updateMenuItem(req.user.tenantId, id, dto);
+  }
+
+  @Delete('menu/:id')
+  @Roles('OWNER', 'MANAGER')
+  removeMenuItem(@Request() req: any, @Param('id') id: string) {
+    return this.posService.removeMenuItem(req.user.tenantId, id);
   }
 
   @Get('orders')

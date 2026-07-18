@@ -74,7 +74,7 @@ describe('TASK-03 Billing & Settlement Integration (e2e)', () => {
       await tx.room.deleteMany({ where: { tenantId: { in: tIds } } });
       await tx.menuItem.deleteMany({ where: { tenantId: { in: tIds } } });
 
-      room1 = await tx.room.create({ data: { tenantId: tenant1.id, roomNumber: '101', roomType: 'STD', baseRate: 5000 } });
+      room1 = await tx.room.create({ data: { tenantId: tenant1.id, roomNumber: '101', legacyType: 'STD', baseRate: 5000 } });
       
       const d1 = new Date();
       const d2 = new Date();
@@ -222,3 +222,4 @@ describe('TASK-03 Billing & Settlement Integration (e2e)', () => {
     });
   });
 });
+

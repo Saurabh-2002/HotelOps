@@ -12,6 +12,16 @@ export class GuestRecordDto {
   idNumber: string;
 
   @IsString()
+  phone: string;
+
+  @IsString()
+  address: string;
+
+  @IsString()
+  @IsOptional()
+  email?: string;
+
+  @IsString()
   @IsOptional()
   encryptedFrroData?: string;
 }

@@ -1,12 +1,13 @@
-import { IsString, IsOptional, IsNumber } from 'class-validator';
+import { IsString, IsOptional, IsNumber, IsEnum } from 'class-validator';
 import { Type } from 'class-transformer';
+import { RoomStatus } from '@prisma/client';
 
 export class CreateRoomDto {
   @IsString()
   roomNumber: string;
 
   @IsString()
-  roomType: string;
+  roomTypeId: string;
 
   @IsString()
   @IsOptional()
@@ -15,6 +16,10 @@ export class CreateRoomDto {
   @IsNumber()
   @Type(() => Number)
   baseRate: number;
+
+  @IsString()
+  @IsOptional()
+  maintenanceNotes?: string;
 }
 
 export class UpdateRoomDto {
@@ -24,7 +29,7 @@ export class UpdateRoomDto {
 
   @IsString()
   @IsOptional()
-  roomType?: string;
+  roomTypeId?: string;
 
   @IsString()
   @IsOptional()
@@ -34,4 +39,12 @@ export class UpdateRoomDto {
   @Type(() => Number)
   @IsOptional()
   baseRate?: number;
+
+  @IsEnum(RoomStatus)
+  @IsOptional()
+  status?: RoomStatus;
+
+  @IsString()
+  @IsOptional()
+  maintenanceNotes?: string;
 }

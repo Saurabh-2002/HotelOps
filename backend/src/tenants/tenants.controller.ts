@@ -35,4 +35,10 @@ export class TenantsController {
   remove(@Param('id') id: string) {
     return this.tenantsService.remove(id);
   }
+
+  @Patch(':id/modules')
+  @Roles('SUPER_ADMIN', 'OWNER')
+  updateModules(@Param('id') id: string, @Body('modules') modules: string[]) {
+    return this.tenantsService.updateModules(id, modules);
+  }
 }

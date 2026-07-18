@@ -1,15 +1,43 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { apiFetch } from '@/lib/api';
-import { Plus, Trash2, Loader2, UtensilsCrossed, ReceiptText, Coffee, Save, LogIn } from 'lucide-react';
+import useSWR from 'swr';
+import { apiFetch, fetcher } from '@/lib/api';
+import { useState } from 'react';
+import { Plus, Pencil, Trash2, UtensilsCrossed } from 'lucide-react';
+import AlertDialog from '@/components/AlertDialog';
+import ConfirmDialog from '@/components/ConfirmDialog';
+import { CardGridSkeleton } from '@/components/Skeletons';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+
+import MenuItemForm from './components/MenuItemForm';
+import type { MenuItemFormData } from './components/MenuItemForm';
+import MenuItemCard from './components/MenuItemCard';
+import OrderCustomizationModal from './components/OrderCustomizationModal';
+import type { OrderItemSelection } from './components/OrderCustomizationModal';
+import CurrentOrderPanel from './components/CurrentOrderPanel';
 
 type MenuItem = {
   id: string;
+  itemCode?: string;
   name: string;
   category: string;
+  subcategory?: string;
   price: string;
+  sizes?: string[];
+  sizePricing?: Record<string, number>;
   isAvailable: boolean;
+  imageUrl?: string;
+  isBestSeller: boolean;
+  isChefSpecial: boolean;
+  isRecommended: boolean;
+  preparationTime?: number;
+  rating?: string;
+  ratingCount: number;
+  spiceLevels?: string[];
+  extras?: { name: string; price: number }[];
+  comboWith?: { itemCode?: string; name: string; price: number }[];
 };
 
 type Booking = {
@@ -18,85 +46,222 @@ type Booking = {
   guestRecords: { fullName: string }[];
 };
 
-type OrderItem = {
-  menuItem: MenuItem;
-  quantity: number;
-  notes: string;
-};
-
 export default function PosPage() {
   const [activeTab, setActiveTab] = useState<'TERMINAL' | 'MENU'>('TERMINAL');
-  
-  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
-  const [activeBookings, setActiveBookings] = useState<Booking[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  
-  // Menu Setup State
-  const [newMenuData, setNewMenuData] = useState({ name: '', category: 'Starters', price: '' });
-  
+
+  // Fetch menu items (Terminal gets available only, Menu Setup gets all)
+  const { data: menuData, error: menuError, mutate: mutateMenu } = useSWR('/pos/menu', fetcher);
+  const { data: allMenuData, mutate: mutateAllMenu } = useSWR('/pos/menu?includeUnavailable=true', fetcher);
+  const { data: bookingsData } = useSWR('/bookings', fetcher);
+
+  const menuItems: MenuItem[] = menuData || [];
+  const allMenuItems: MenuItem[] = allMenuData || [];
+  const activeBookings: Booking[] = bookingsData?.filter((b: any) => b.status === 'CHECKED_IN') || [];
+  const isLoading = !menuData && !menuError;
+
+  // Menu Form State
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
+
   // Terminal State
-  const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
+  const [orderItems, setOrderItems] = useState<OrderItemSelection[]>([]);
   const [selectedBookingId, setSelectedBookingId] = useState<string>('');
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string>('All');
 
-  const fetchData = async () => {
-    try {
-      setIsLoading(true);
-      const [menuData, bookingsData] = await Promise.all([
-        apiFetch('/pos/menu'),
-        apiFetch('/bookings')
-      ]);
-      setMenuItems(menuData);
-      setActiveBookings(bookingsData.filter((b: any) => b.status === 'CHECKED_IN'));
-    } catch (err: any) {
-      console.error(err);
-    } finally {
-      setIsLoading(false);
+  // Customization Modal State
+  const [customizingItem, setCustomizingItem] = useState<MenuItem | null>(null);
+  const [isCustomizationOpen, setIsCustomizationOpen] = useState(false);
+
+  // Dialogs
+  const [alertConfig, setAlertConfig] = useState<{isOpen: boolean, title?: string, message: string, type: 'error'|'success'|'info'}>({ isOpen: false, message: '', type: 'info' });
+  const [confirmConfig, setConfirmConfig] = useState<{isOpen: boolean, title: string, message: string, action?: string, id?: string}>({ isOpen: false, title: '', message: '' });
+
+  // --- Menu Form Handlers ---
+
+  const handleOpenForm = (item?: MenuItem) => {
+    if (item) {
+      setEditingItem(item);
+    } else {
+      setEditingItem(null);
     }
+    setIsFormOpen(true);
   };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const handleAddMenuItem = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await apiFetch('/pos/menu', {
-        method: 'POST',
-        body: JSON.stringify({
-          ...newMenuData,
-          price: Number(newMenuData.price)
-        }),
+  const handleFormSubmit = async (data: MenuItemFormData) => {
+    if (editingItem) {
+      const promise = apiFetch(`/pos/menu/${editingItem.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
       });
-      setNewMenuData({ name: '', category: 'Starters', price: '' });
-      fetchData();
-    } catch (err: any) {
-      alert(err.message || 'Failed to add menu item');
+
+      mutateAllMenu(async (currentData: any) => {
+        await promise;
+        if (!currentData) return currentData;
+        return currentData.map((item: MenuItem) =>
+          item.id === editingItem.id ? { ...item, ...data } : item
+        );
+      }, {
+        optimisticData: (currentData: any) => {
+          if (!currentData) return currentData;
+          return currentData.map((item: MenuItem) =>
+            item.id === editingItem.id ? { ...item, ...data } : item
+          );
+        },
+        rollbackOnError: true,
+        revalidate: true,
+      });
+
+      mutateMenu(async (currentData: any) => {
+        if (!currentData) return currentData;
+        const mapped = currentData.map((item: MenuItem) =>
+          item.id === editingItem.id ? { ...item, ...data } : item
+        );
+        return mapped.filter((i: MenuItem) => i.isAvailable);
+      }, {
+        optimisticData: (currentData: any) => {
+          if (!currentData) return currentData;
+          const mapped = currentData.map((item: MenuItem) =>
+            item.id === editingItem.id ? { ...item, ...data } : item
+          );
+          return mapped.filter((i: MenuItem) => i.isAvailable);
+        },
+        rollbackOnError: true,
+        revalidate: false,
+      });
+
+      await mutateMenu();
+    } else {
+      const promise = apiFetch('/pos/menu', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+
+      mutateAllMenu(async (currentData: any) => {
+        await promise;
+        if (!currentData) return currentData;
+        return [{ id: `temp-${Date.now()}`, ...data, ratingCount: 0 }, ...currentData];
+      }, {
+        optimisticData: (currentData: any) => {
+          if (!currentData) return currentData;
+          return [{ id: `temp-${Date.now()}`, ...data, ratingCount: 0 }, ...currentData];
+        },
+        rollbackOnError: true,
+        revalidate: true,
+      });
+
+      mutateMenu(async (currentData: any) => {
+        if (!currentData) return currentData;
+        if (!data.isAvailable) return currentData;
+        return [{ id: `temp-${Date.now()}`, ...data, ratingCount: 0 }, ...currentData];
+      }, {
+        optimisticData: (currentData: any) => {
+          if (!currentData) return currentData;
+          if (!data.isAvailable) return currentData;
+          return [{ id: `temp-${Date.now()}`, ...data, ratingCount: 0 }, ...currentData];
+        },
+        rollbackOnError: true,
+        revalidate: false,
+      });
+
+      await mutateMenu();
+    }
+
+    setIsFormOpen(false);
+    setEditingItem(null);
+  };
+
+  const handleDeleteMenuItem = (id: string) => {
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Delete Menu Item',
+      message: 'Are you sure you want to delete this menu item? If it has been used in orders, it will be marked as unavailable instead.',
+      id: id,
+      action: 'delete_menu_item'
+    });
+  };
+
+  const confirmAction = async () => {
+    setConfirmConfig({ ...confirmConfig, isOpen: false });
+    if (confirmConfig.action === 'delete_menu_item' && confirmConfig.id) {
+      try {
+        const promise = apiFetch(`/pos/menu/${confirmConfig.id}`, { method: 'DELETE' });
+
+        mutateAllMenu(async (currentData: any) => {
+          await promise;
+          if (!currentData) return currentData;
+          return currentData.filter((item: MenuItem) => item.id !== confirmConfig.id);
+        }, {
+          optimisticData: (currentData: any) => {
+            if (!currentData) return currentData;
+            return currentData.filter((item: MenuItem) => item.id !== confirmConfig.id);
+          },
+          rollbackOnError: true,
+          revalidate: true,
+        });
+
+        mutateMenu(async (currentData: any) => {
+          if (!currentData) return currentData;
+          return currentData.filter((item: MenuItem) => item.id !== confirmConfig.id);
+        }, {
+          optimisticData: (currentData: any) => {
+            if (!currentData) return currentData;
+            return currentData.filter((item: MenuItem) => item.id !== confirmConfig.id);
+          },
+          rollbackOnError: true,
+          revalidate: false,
+        });
+
+        await mutateMenu();
+      } catch (err: any) {
+        setAlertConfig({ isOpen: true, title: 'Error', message: err.message || 'Failed to delete menu item', type: 'error' });
+      }
     }
   };
 
-  const addToOrder = (item: MenuItem) => {
-    setOrderItems(prev => {
-      const existing = prev.find(p => p.menuItem.id === item.id);
-      if (existing) {
-        return prev.map(p => p.menuItem.id === item.id ? { ...p, quantity: p.quantity + 1 } : p);
-      }
-      return [...prev, { menuItem: item, quantity: 1, notes: '' }];
-    });
+  // --- Terminal Handlers ---
+
+  const handleItemClick = (item: MenuItem) => {
+    // If item has customization options, show the modal
+    const hasCustomizations = (item.sizes && item.sizes.length > 0) ||
+      (item.spiceLevels && item.spiceLevels.length > 0) ||
+      (item.extras && item.extras.length > 0) ||
+      (item.comboWith && item.comboWith.length > 0);
+
+    if (item.id.startsWith('temp-')) {
+      setAlertConfig({ isOpen: true, title: 'Item Saving', message: 'This item is still being saved to the database. Please wait a second and try again.', type: 'info' });
+      return;
+    }
+
+    if (hasCustomizations) {
+      setCustomizingItem(item);
+      setIsCustomizationOpen(true);
+    } else {
+      // Quick add with defaults
+      addToOrder({
+        menuItem: item,
+        quantity: 1,
+        extras: [],
+        comboItems: [],
+        notes: '',
+      });
+    }
   };
 
-  const updateQuantity = (itemId: string, delta: number) => {
-    setOrderItems(prev => {
-      return prev.map(p => {
-        if (p.menuItem.id === itemId) {
-          const newQ = p.quantity + delta;
-          return newQ > 0 ? { ...p, quantity: newQ } : p;
-        }
-        return p;
-      }).filter(p => p.quantity > 0);
-    });
+  const addToOrder = (selection: OrderItemSelection) => {
+    setOrderItems(prev => [...prev, selection]);
+  };
+
+  const updateQuantity = (index: number, delta: number) => {
+    setOrderItems(prev =>
+      prev
+        .map((item, i) => i === index ? { ...item, quantity: item.quantity + delta } : item)
+        .filter(item => item.quantity > 0)
+    );
+  };
+
+  const removeFromOrder = (index: number) => {
+    setOrderItems(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmitOrder = async () => {
@@ -110,7 +275,11 @@ export default function PosPage() {
           items: orderItems.map(item => ({
             menuItemId: item.menuItem.id,
             quantity: item.quantity,
-            notes: item.notes
+            selectedSize: item.selectedSize || null,
+            spiceLevel: item.spiceLevel || null,
+            extras: item.extras.length > 0 ? item.extras : null,
+            comboItems: item.comboItems.length > 0 ? item.comboItems : null,
+            notes: item.notes || null,
           }))
         }),
       });
@@ -124,20 +293,19 @@ export default function PosPage() {
         })
       });
 
-      alert(selectedBookingId ? 'KOT Generated & Posted to Room!' : 'KOT Generated & Settled as Cash!');
+      setAlertConfig({ isOpen: true, title: 'Success', message: selectedBookingId ? 'KOT Generated & Posted to Room!' : 'KOT Generated & Settled as Cash!', type: 'success' });
       setOrderItems([]);
       setSelectedBookingId('');
     } catch (err: any) {
-      alert(err.message || 'Failed to process order');
+      setAlertConfig({ isOpen: true, title: 'Error', message: err.message || 'Failed to process order', type: 'error' });
     } finally {
       setIsSubmittingOrder(false);
     }
   };
 
+  // --- Derived Data ---
   const categories = ['All', ...Array.from(new Set(menuItems.map(m => m.category)))];
   const filteredMenu = activeCategory === 'All' ? menuItems : menuItems.filter(m => m.category === activeCategory);
-  
-  const orderTotal = orderItems.reduce((sum, item) => sum + (Number(item.menuItem.price) * item.quantity), 0);
 
   return (
     <div className="h-full flex flex-col space-y-4">
@@ -146,172 +314,239 @@ export default function PosPage() {
           <h3 className="text-2xl font-bold text-slate-800">Restaurant POS</h3>
           <p className="text-slate-500 text-sm mt-1">Manage orders and room service.</p>
         </div>
-        <div className="flex bg-slate-200 p-1 rounded-lg">
-          <button
-            onClick={() => setActiveTab('TERMINAL')}
-            className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${activeTab === 'TERMINAL' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
-          >
-            Terminal
-          </button>
-          <button
-            onClick={() => setActiveTab('MENU')}
-            className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${activeTab === 'MENU' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
-          >
-            Menu Setup
-          </button>
+        <div className="flex items-center gap-3">
+          {activeTab === 'MENU' && (
+            <Button onClick={() => handleOpenForm()}>
+              <Plus className="w-4 h-4 mr-2" />
+              Add Menu Item
+            </Button>
+          )}
+          <div className="flex bg-slate-200/50 p-1 rounded-lg">
+            <Button
+              variant={activeTab === 'TERMINAL' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setActiveTab('TERMINAL')}
+            >
+              Terminal
+            </Button>
+            <Button
+              variant={activeTab === 'MENU' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setActiveTab('MENU')}
+            >
+              Menu Setup
+            </Button>
+          </div>
         </div>
       </div>
 
       {isLoading ? (
-        <div className="flex-1 flex justify-center items-center">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-        </div>
+        <CardGridSkeleton count={8} />
       ) : activeTab === 'MENU' ? (
-        <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-6 max-w-4xl">
-          <h4 className="text-lg font-semibold text-slate-900 mb-6 border-b border-slate-100 pb-4">Add Menu Item</h4>
-          <form onSubmit={handleAddMenuItem} className="flex gap-4 items-end mb-8">
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-slate-700 mb-1">Item Name</label>
-              <input type="text" required value={newMenuData.name} onChange={e => setNewMenuData({...newMenuData, name: e.target.value})} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="e.g., Paneer Tikka" />
-            </div>
-            <div className="w-48">
-              <label className="block text-sm font-medium text-slate-700 mb-1">Category</label>
-              <input type="text" required value={newMenuData.category} onChange={e => setNewMenuData({...newMenuData, category: e.target.value})} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="e.g., Starters" />
-            </div>
-            <div className="w-32">
-              <label className="block text-sm font-medium text-slate-700 mb-1">Price (₹)</label>
-              <input type="number" required min="0" value={newMenuData.price} onChange={e => setNewMenuData({...newMenuData, price: e.target.value})} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="250" />
-            </div>
-            <button type="submit" className="px-4 py-2 bg-slate-900 text-white font-medium rounded-lg hover:bg-slate-800 transition-colors h-[42px]">
-              Add Item
-            </button>
-          </form>
-
-          <h4 className="text-lg font-semibold text-slate-900 mb-4">Current Menu</h4>
-          <div className="grid grid-cols-2 gap-4">
-            {menuItems.map(item => (
-              <div key={item.id} className="flex justify-between items-center p-3 border border-slate-100 rounded-lg bg-slate-50">
-                <div>
-                  <div className="font-medium text-slate-900">{item.name}</div>
-                  <div className="text-xs text-slate-500">{item.category}</div>
+        /* ======================== MENU SETUP TAB ======================== */
+        <div className="space-y-4">
+          {/* Summary Stats */}
+          <div className="flex gap-4">
+            <Card className="flex-1 border-none shadow-sm">
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center">
+                  <UtensilsCrossed className="w-5 h-5 text-blue-600" />
                 </div>
-                <div className="font-semibold text-slate-700">₹{Number(item.price)}</div>
-              </div>
-            ))}
-            {menuItems.length === 0 && (
-              <div className="col-span-2 text-center text-slate-500 py-8">No menu items configured yet.</div>
-            )}
+                <div>
+                  <p className="text-2xl font-bold text-slate-900">{allMenuItems.length}</p>
+                  <p className="text-xs text-slate-500">Total Items</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="flex-1 border-none shadow-sm">
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className="w-10 h-10 bg-emerald-50 rounded-lg flex items-center justify-center">
+                  <span className="text-emerald-600 font-bold text-sm">{allMenuItems.filter(i => i.isAvailable).length}</span>
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-slate-900">{allMenuItems.filter(i => i.isAvailable).length}</p>
+                  <p className="text-xs text-slate-500">Available</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="flex-1 border-none shadow-sm">
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className="w-10 h-10 bg-amber-50 rounded-lg flex items-center justify-center">
+                  <span className="text-amber-600 font-bold text-sm">{Array.from(new Set(allMenuItems.map(i => i.category))).length}</span>
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-slate-900">{Array.from(new Set(allMenuItems.map(i => i.category))).length}</p>
+                  <p className="text-xs text-slate-500">Categories</p>
+                </div>
+              </CardContent>
+            </Card>
           </div>
+
+          {/* Menu Items Grid */}
+          <Card className="border-none shadow-md">
+            <CardHeader className="border-b border-slate-100 pb-4">
+              <h4 className="text-lg font-semibold text-slate-900">Menu Items</h4>
+            </CardHeader>
+            <CardContent className="pt-6">
+              {allMenuItems.length === 0 ? (
+                <div className="text-center text-slate-500 py-12">
+                  <UtensilsCrossed className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                  <p className="text-base font-medium">No menu items yet</p>
+                  <p className="text-sm mt-1">Click &quot;Add Menu Item&quot; to get started.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 xl:grid-cols-3 gap-4">
+                  {allMenuItems.map(item => (
+                    <div
+                      key={item.id}
+                      className={`flex justify-between items-start p-4 border rounded-xl group hover:border-blue-200 hover:shadow-sm transition-all ${
+                        !item.isAvailable ? 'bg-slate-50 opacity-60' : 'bg-white border-slate-100'
+                      }`}
+                    >
+                      <div className="flex items-start gap-3 min-w-0 flex-1">
+                        {item.imageUrl ? (
+                          <img src={item.imageUrl} alt={item.name} className="w-14 h-14 rounded-lg object-cover border border-slate-200 shrink-0" />
+                        ) : (
+                          <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center shrink-0">
+                            <UtensilsCrossed className="w-5 h-5 text-slate-400" />
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-slate-900 truncate">{item.name}</span>
+                            {item.itemCode && (
+                              <Badge variant="outline" className="text-[10px] text-slate-400 px-1.5 py-0 shrink-0">
+                                {item.itemCode}
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="text-xs text-slate-500 mt-0.5">
+                            {item.category}
+                            {item.subcategory && <span> · {item.subcategory}</span>}
+                          </div>
+                          <div className="flex flex-wrap gap-1 mt-1.5">
+                            {item.sizePricing && Object.keys(item.sizePricing).length > 0 ? (
+                              <Badge variant="secondary" className="text-xs bg-blue-50 text-blue-700">
+                                ₹{Math.min(...Object.values(item.sizePricing))} - ₹{Math.max(...Object.values(item.sizePricing))}
+                              </Badge>
+                            ) : (
+                              <Badge variant="secondary" className="text-xs bg-blue-50 text-blue-700">
+                                ₹{Number(item.price)}
+                              </Badge>
+                            )}
+                            {!item.isAvailable && (
+                              <Badge variant="destructive" className="text-xs">Unavailable</Badge>
+                            )}
+                            {item.isBestSeller && (
+                              <span className="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded-full font-medium">🔥 Best</span>
+                            )}
+                            {item.isChefSpecial && (
+                              <span className="text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full font-medium">👨‍🍳 Chef</span>
+                            )}
+                            {item.isRecommended && (
+                              <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full font-medium">⭐ Rec</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-2">
+                        <Button variant="ghost" size="icon" onClick={() => handleOpenForm(item)} title="Edit">
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => handleDeleteMenuItem(item.id)} title="Delete">
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       ) : (
+        /* ======================== TERMINAL TAB ======================== */
         <div className="flex-1 flex gap-6 overflow-hidden min-h-[500px]">
           {/* Left: Menu Grid */}
-          <div className="flex-1 flex flex-col bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+          <Card className="flex-1 flex flex-col border-none shadow-md overflow-hidden bg-white">
             <div className="flex overflow-x-auto p-4 border-b border-slate-100 gap-2 shrink-0">
               {categories.map(c => (
-                <button
+                <Button
                   key={c}
+                  variant={activeCategory === c ? 'default' : 'outline'}
+                  size="sm"
                   onClick={() => setActiveCategory(c)}
-                  className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
-                    activeCategory === c ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
+                  className="rounded-full"
                 >
                   {c}
-                </button>
+                </Button>
               ))}
             </div>
             <div className="flex-1 overflow-y-auto p-4 bg-slate-50/50">
               <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
                 {filteredMenu.map(item => (
-                  <button
+                  <MenuItemCard
                     key={item.id}
-                    onClick={() => addToOrder(item)}
-                    className="flex flex-col items-start p-4 bg-white border border-slate-200 rounded-xl shadow-sm hover:border-blue-300 hover:shadow-md transition-all text-left group"
-                  >
-                    <div className="font-semibold text-slate-800 group-hover:text-blue-700 transition-colors line-clamp-2">{item.name}</div>
-                    <div className="mt-2 text-blue-600 font-bold bg-blue-50 px-2.5 py-1 rounded-md text-sm">
-                      ₹{Number(item.price)}
-                    </div>
-                  </button>
+                    item={item}
+                    onClick={handleItemClick}
+                  />
                 ))}
               </div>
-            </div>
-          </div>
-
-          {/* Right: Current Order (KOT) */}
-          <div className="w-96 flex flex-col bg-white border border-slate-200 rounded-xl shadow-sm shrink-0">
-            <div className="p-4 border-b border-slate-100 bg-slate-50 rounded-t-xl flex items-center justify-between">
-              <h4 className="font-bold text-slate-800 flex items-center">
-                <ReceiptText className="w-5 h-5 mr-2 text-slate-500" />
-                Current Order
-              </h4>
-            </div>
-
-            <div className="p-4 border-b border-slate-100">
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Assign To Room</label>
-              <select
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white"
-                value={selectedBookingId}
-                onChange={(e) => setSelectedBookingId(e.target.value)}
-              >
-                <option value="">Walk-in (Cash Order)</option>
-                {activeBookings.map(b => (
-                  <option key={b.id} value={b.id}>
-                    Room {b.room.roomNumber} - {b.guestRecords[0]?.fullName}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50/30">
-              {orderItems.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center text-slate-400">
+              {filteredMenu.length === 0 && (
+                <div className="flex flex-col items-center justify-center h-full text-slate-400">
                   <UtensilsCrossed className="w-12 h-12 mb-3 opacity-20" />
-                  <p className="text-sm">Select items from the menu</p>
+                  <p className="text-sm">No items in this category</p>
                 </div>
-              ) : (
-                orderItems.map((item) => (
-                  <div key={item.menuItem.id} className="flex justify-between items-center bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
-                    <div className="flex-1 pr-3">
-                      <div className="font-medium text-slate-800 text-sm">{item.menuItem.name}</div>
-                      <div className="text-xs text-slate-500">₹{Number(item.menuItem.price)}</div>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <div className="flex items-center bg-slate-100 rounded-md">
-                        <button onClick={() => updateQuantity(item.menuItem.id, -1)} className="w-7 h-7 flex items-center justify-center text-slate-600 hover:bg-slate-200 rounded-l-md font-medium">-</button>
-                        <div className="w-6 text-center text-sm font-semibold">{item.quantity}</div>
-                        <button onClick={() => updateQuantity(item.menuItem.id, 1)} className="w-7 h-7 flex items-center justify-center text-slate-600 hover:bg-slate-200 rounded-r-md font-medium">+</button>
-                      </div>
-                      <div className="w-14 text-right font-bold text-slate-700 text-sm">
-                        ₹{Number(item.menuItem.price) * item.quantity}
-                      </div>
-                    </div>
-                  </div>
-                ))
               )}
             </div>
+          </Card>
 
-            <div className="p-4 border-t border-slate-200 bg-slate-50 rounded-b-xl">
-              <div className="flex justify-between items-center mb-4">
-                <span className="text-slate-600 font-medium">Subtotal</span>
-                <span className="text-xl font-bold text-slate-900">₹{orderTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-              </div>
-              <button
-                onClick={handleSubmitOrder}
-                disabled={orderItems.length === 0 || isSubmittingOrder}
-                className="w-full py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center shadow-sm"
-              >
-                {isSubmittingOrder ? (
-                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                ) : (
-                  <Save className="w-5 h-5 mr-2" />
-                )}
-                {selectedBookingId ? 'Post to Room & Print KOT' : 'Pay Cash & Print KOT'}
-              </button>
-            </div>
-          </div>
+          {/* Right: Current Order */}
+          <CurrentOrderPanel
+            orderItems={orderItems}
+            activeBookings={activeBookings}
+            selectedBookingId={selectedBookingId}
+            onBookingChange={setSelectedBookingId}
+            onUpdateQuantity={updateQuantity}
+            onRemoveItem={removeFromOrder}
+            onSubmitOrder={handleSubmitOrder}
+            isSubmitting={isSubmittingOrder}
+          />
         </div>
       )}
+
+      {/* Menu Item Form Modal */}
+      <MenuItemForm
+        isOpen={isFormOpen}
+        onClose={() => { setIsFormOpen(false); setEditingItem(null); }}
+        onSubmit={handleFormSubmit}
+        editingItem={editingItem}
+        existingItems={allMenuItems}
+      />
+
+      {/* Order Customization Modal */}
+      <OrderCustomizationModal
+        isOpen={isCustomizationOpen}
+        item={customizingItem}
+        onClose={() => { setIsCustomizationOpen(false); setCustomizingItem(null); }}
+        onAdd={addToOrder}
+      />
+
+      <AlertDialog
+        isOpen={alertConfig.isOpen}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })}
+      />
+
+      <ConfirmDialog
+        isOpen={confirmConfig.isOpen}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        onConfirm={confirmAction}
+        onCancel={() => setConfirmConfig({ ...confirmConfig, isOpen: false })}
+      />
     </div>
   );
 }

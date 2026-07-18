@@ -53,4 +53,57 @@ export class BookingsController {
   cancel(@Request() req: any, @Param('id') id: string) {
     return this.bookingsService.cancel(req.user.tenantId, id);
   }
+
+  @Get('availability/check')
+  @Roles('SUPER_ADMIN', 'OWNER', 'MANAGER', 'FRONT_DESK')
+  checkAvailability(
+    @Request() req: any,
+    @Query('checkInDate') checkInDate: string,
+    @Query('checkOutDate') checkOutDate: string,
+  ) {
+    return this.bookingsService.checkAvailability(req.user.tenantId, checkInDate, checkOutDate);
+  }
+
+  @Post('walk-in')
+  @Roles('OWNER', 'MANAGER', 'FRONT_DESK')
+  walkIn(@Request() req: any, @Body() dto: CreateBookingDto) {
+    return this.bookingsService.walkIn(req.user.tenantId, dto);
+  }
+
+  @Post(':id/modify')
+  @Roles('OWNER', 'MANAGER', 'FRONT_DESK')
+  modifyDates(
+    @Request() req: any, 
+    @Param('id') id: string,
+    @Body('checkInDate') checkInDate: string,
+    @Body('checkOutDate') checkOutDate: string
+  ) {
+    return this.bookingsService.modifyDates(req.user.tenantId, id, checkInDate, checkOutDate);
+  }
+
+  @Post(':id/extend')
+  @Roles('OWNER', 'MANAGER', 'FRONT_DESK')
+  extendStay(
+    @Request() req: any, 
+    @Param('id') id: string,
+    @Body('checkOutDate') checkOutDate: string
+  ) {
+    return this.bookingsService.extendStay(req.user.tenantId, id, checkOutDate);
+  }
+
+  @Post(':id/move')
+  @Roles('OWNER', 'MANAGER', 'FRONT_DESK')
+  moveRoom(
+    @Request() req: any, 
+    @Param('id') id: string,
+    @Body('newRoomId') newRoomId: string
+  ) {
+    return this.bookingsService.moveRoom(req.user.tenantId, id, newRoomId);
+  }
+
+  @Post(':id/no-show')
+  @Roles('OWNER', 'MANAGER', 'FRONT_DESK')
+  markNoShow(@Request() req: any, @Param('id') id: string) {
+    return this.bookingsService.markNoShow(req.user.tenantId, id);
+  }
 }

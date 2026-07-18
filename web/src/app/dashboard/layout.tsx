@@ -3,36 +3,39 @@
 import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, BedDouble, CalendarDays, ReceiptText, LogOut, Loader2, UtensilsCrossed } from 'lucide-react';
+import { LayoutDashboard, BedDouble, CalendarDays, ReceiptText, LogOut, UtensilsCrossed } from 'lucide-react';
+import { LayoutSkeleton } from '@/components/Skeletons';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, logout, isLoading } = useAuth();
   const pathname = usePathname();
 
   if (isLoading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-slate-50">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-      </div>
-    );
+    return <LayoutSkeleton />;
   }
 
   if (!user) {
     return null; // AuthContext will redirect to login
   }
 
-  const navItems = [
-    { name: 'Overview', href: '/dashboard', icon: LayoutDashboard },
-    { name: 'Rooms', href: '/dashboard/rooms', icon: BedDouble },
-    { name: 'Bookings', href: '/dashboard/bookings', icon: CalendarDays },
-    { name: 'Restaurant POS', href: '/dashboard/pos', icon: UtensilsCrossed },
-    { name: 'Billing', href: '/dashboard/billing', icon: ReceiptText },
-  ];
+    const navItems = [
+      { name: 'Overview', href: '/dashboard', icon: LayoutDashboard },
+      ...(user.activeModules?.includes('HOTEL') ? [
+        { name: 'Rooms', href: '/dashboard/rooms', icon: BedDouble },
+        { name: 'Room Types', href: '/dashboard/room-types', icon: BedDouble },
+        { name: 'Bookings', href: '/dashboard/bookings', icon: CalendarDays },
+      ] : []),
+      ...(user.activeModules?.includes('RESTAURANT') ? [
+        { name: 'Restaurant POS', href: '/dashboard/pos', icon: UtensilsCrossed },
+      ] : []),
+      { name: 'Billing', href: '/dashboard/billing', icon: ReceiptText },
+      { name: 'Settings', href: '/dashboard/settings', icon: LayoutDashboard },
+    ];
 
   return (
-    <div className="flex h-screen bg-slate-50 overflow-hidden">
+    <div className="flex h-screen bg-slate-50 overflow-hidden print:block print:h-auto print:overflow-visible">
       {/* Sidebar */}
-      <aside className="w-64 bg-slate-900 text-slate-300 flex flex-col transition-all">
+      <aside className="w-64 bg-slate-900 text-slate-300 flex flex-col transition-all print:hidden">
         <div className="h-16 flex items-center px-6 border-b border-slate-800 bg-slate-950">
           <h1 className="text-xl font-bold text-white tracking-tight">HotelOps</h1>
         </div>
@@ -75,13 +78,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col overflow-hidden">
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center px-8 shrink-0 shadow-sm z-10">
+      <main className="flex-1 flex flex-col overflow-hidden print:block print:overflow-visible">
+        <header className="h-16 bg-white border-b border-slate-200 flex items-center px-8 shrink-0 shadow-sm z-10 print:hidden">
           <h2 className="text-lg font-semibold text-slate-800 capitalize">
             {pathname.split('/').pop() || 'Dashboard'}
           </h2>
         </header>
-        <div className="flex-1 overflow-auto p-8 bg-slate-50/50">
+        <div className="flex-1 overflow-auto p-8 bg-slate-50/50 print:block print:overflow-visible print:p-0 print:bg-white">
           {children}
         </div>
       </main>

@@ -18,6 +18,7 @@ type AuthContextType = {
   user: User | null;
   login: (token: string, userData: User) => void;
   logout: () => void;
+  updateUser: (userData: Partial<User>) => void;
   isLoading: boolean;
 };
 
@@ -36,7 +37,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (storedUser && storedToken) {
       setUser(JSON.parse(storedUser));
     } else {
-      if (pathname !== '/login') {
+      const publicPaths = ['/login', '/signup', '/'];
+      if (!publicPaths.includes(pathname)) {
         router.push('/login');
       }
     }
@@ -54,11 +56,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setUser(null);
-    router.push('/login');
+    router.push('/');
+  };
+
+  const updateUser = (userData: Partial<User>) => {
+    if (user) {
+      const updated = { ...user, ...userData };
+      localStorage.setItem('user', JSON.stringify(updated));
+      setUser(updated);
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, login, logout, updateUser, isLoading }}>
       {children}
     </AuthContext.Provider>
   );
