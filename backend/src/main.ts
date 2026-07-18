@@ -6,7 +6,9 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.enableCors();
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
-  app.setGlobalPrefix('api');
+  app.setGlobalPrefix('api', {
+    exclude: ['/'],
+  });
   await app.listen(process.env.PORT ?? 3000, '0.0.0.0');
   console.log(`HotelOps API running on port ${process.env.PORT ?? 3000}`);
 }
