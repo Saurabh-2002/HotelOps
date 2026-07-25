@@ -471,11 +471,16 @@ export default function MenuItemForm({
         formData.spiceLevels = selectedSpiceLevels;
 
       // Extras
-      const validExtras = extras.filter((x) => x.name.trim());
+      const validExtras = extras
+        .filter((x) => x.name.trim())
+        .map((x) => ({ name: x.name, price: Number(x.price) || 0 }));
       if (validExtras.length > 0) formData.extras = validExtras;
 
       // Combos
-      if (combos.length > 0) formData.comboWith = combos;
+      const validCombos = combos
+        .filter((c) => c.name.trim())
+        .map((c) => ({ itemCode: c.itemCode, name: c.name, price: Number(c.price) || 0 }));
+      if (validCombos.length > 0) formData.comboWith = validCombos;
 
       await onSubmit(formData);
       onClose();
