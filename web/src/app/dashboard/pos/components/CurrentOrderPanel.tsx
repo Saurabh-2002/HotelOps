@@ -22,6 +22,8 @@ interface CurrentOrderPanelProps {
   onRemoveItem: (index: number) => void;
   onSubmitOrder: () => Promise<void>;
   isSubmitting: boolean;
+  /** When true, renders without the outer Card wrapper (for use inside drawers) */
+  bare?: boolean;
 }
 
 function calculateItemPrice(item: OrderItemSelection): number {
@@ -38,7 +40,8 @@ function calculateItemPrice(item: OrderItemSelection): number {
   return base + extrasTotal + comboTotal;
 }
 
-export default function CurrentOrderPanel({
+/** Shared order content used by both desktop sidebar and mobile drawer */
+export function OrderContent({
   orderItems,
   activeBookings,
   selectedBookingId,
@@ -47,7 +50,7 @@ export default function CurrentOrderPanel({
   onRemoveItem,
   onSubmitOrder,
   isSubmitting,
-}: CurrentOrderPanelProps) {
+}: Omit<CurrentOrderPanelProps, 'bare'>) {
   const totalItemCount = orderItems.reduce((sum, item) => sum + item.quantity, 0);
   const orderTotal = orderItems.reduce(
     (sum, item) => sum + calculateItemPrice(item) * item.quantity,
@@ -55,22 +58,7 @@ export default function CurrentOrderPanel({
   );
 
   return (
-    <Card className="w-full md:w-96 flex flex-col border-none shadow-md shrink-0 bg-white overflow-hidden">
-      {/* Header */}
-      <CardHeader className="p-4 border-b border-slate-100 bg-slate-50 pb-4">
-        <div className="flex items-center justify-between">
-          <h4 className="font-bold text-slate-800 flex items-center">
-            <ReceiptText className="w-5 h-5 mr-2 text-slate-500" />
-            Current Order
-          </h4>
-          {totalItemCount > 0 && (
-            <Badge variant="default" className="text-xs">
-              {totalItemCount} {totalItemCount === 1 ? 'item' : 'items'}
-            </Badge>
-          )}
-        </div>
-      </CardHeader>
-
+    <>
       {/* Room Assignment */}
       <div className="p-4 border-b border-slate-100">
         <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
@@ -92,7 +80,7 @@ export default function CurrentOrderPanel({
       {/* Order Items List */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50/30">
         {orderItems.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-slate-400">
+          <div className="h-full flex flex-col items-center justify-center text-slate-400 py-8">
             <UtensilsCrossed className="w-12 h-12 mb-3 opacity-20" />
             <p className="text-sm">Select items from the menu</p>
           </div>
@@ -145,18 +133,18 @@ export default function CurrentOrderPanel({
                     <Button
                       variant="outline"
                       size="icon"
-                      className="h-7 w-7 rounded-md bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+                      className="h-8 w-8 sm:h-7 sm:w-7 rounded-md bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
                       onClick={() => onUpdateQuantity(index, -1)}
                     >
                       −
                     </Button>
-                    <div className="w-5 text-center text-sm font-semibold">
+                    <div className="w-6 text-center text-sm font-semibold">
                       {item.quantity}
                     </div>
                     <Button
                       variant="outline"
                       size="icon"
-                      className="h-7 w-7 rounded-md bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+                      className="h-8 w-8 sm:h-7 sm:w-7 rounded-md bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
                       onClick={() => onUpdateQuantity(index, 1)}
                     >
                       +
@@ -174,7 +162,7 @@ export default function CurrentOrderPanel({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7 text-red-400 hover:text-red-600 hover:bg-red-50 shrink-0"
+                      className="h-8 w-8 sm:h-7 sm:w-7 text-red-400 hover:text-red-600 hover:bg-red-50 shrink-0"
                       onClick={() => onRemoveItem(index)}
                       title="Remove item"
                     >
@@ -189,7 +177,7 @@ export default function CurrentOrderPanel({
       </div>
 
       {/* Footer */}
-      <div className="p-4 border-t border-slate-100 bg-slate-50 mt-auto">
+      <div className="p-4 border-t border-slate-100 bg-slate-50 mt-auto shrink-0">
         <div className="flex justify-between items-center mb-1">
           <span className="text-slate-600 font-medium">Subtotal</span>
           <span className="text-xl font-bold text-slate-900">
@@ -213,6 +201,36 @@ export default function CurrentOrderPanel({
           {selectedBookingId ? 'Post to Room & Print KOT' : 'Pay Cash & Print KOT'}
         </Button>
       </div>
+    </>
+  );
+}
+
+export default function CurrentOrderPanel(props: CurrentOrderPanelProps) {
+  const { orderItems, bare } = props;
+  const totalItemCount = orderItems.reduce((sum, item) => sum + item.quantity, 0);
+
+  if (bare) {
+    return <OrderContent {...props} />;
+  }
+
+  return (
+    <Card className="hidden md:flex w-96 flex-col border-none shadow-md shrink-0 bg-white overflow-hidden">
+      {/* Header */}
+      <CardHeader className="p-4 border-b border-slate-100 bg-slate-50 pb-4">
+        <div className="flex items-center justify-between">
+          <h4 className="font-bold text-slate-800 flex items-center">
+            <ReceiptText className="w-5 h-5 mr-2 text-slate-500" />
+            Current Order
+          </h4>
+          {totalItemCount > 0 && (
+            <Badge variant="default" className="text-xs">
+              {totalItemCount} {totalItemCount === 1 ? 'item' : 'items'}
+            </Badge>
+          )}
+        </div>
+      </CardHeader>
+
+      <OrderContent {...props} />
     </Card>
   );
 }

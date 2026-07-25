@@ -89,10 +89,10 @@ const CATEGORY_PRESETS = [
 
 const SPICE_PRESETS = ['Mild', 'Medium', 'Hot', 'Extra Hot'];
 
-const DEFAULT_SIZE_ROWS: { name: string; price: number }[] = [
-  { name: 'Quarter', price: 0 },
-  { name: 'Half', price: 0 },
-  { name: 'Full', price: 0 },
+const DEFAULT_SIZE_ROWS: { name: string; price: number | '' }[] = [
+  { name: 'Quarter', price: '' },
+  { name: 'Half', price: '' },
+  { name: 'Full', price: '' },
 ];
 
 // ---------------------------------------------------------------------------
@@ -192,7 +192,7 @@ export default function MenuItemForm({
   // Pricing
   const [pricingMode, setPricingMode] = useState<'single' | 'size'>('single');
   const [singlePrice, setSinglePrice] = useState('');
-  const [sizeRows, setSizeRows] = useState<{ name: string; price: number }[]>(
+  const [sizeRows, setSizeRows] = useState<{ name: string; price: number | '' }[]>(
     () => [...DEFAULT_SIZE_ROWS]
   );
 
@@ -212,7 +212,7 @@ export default function MenuItemForm({
   const [customSpice, setCustomSpice] = useState('');
 
   // Customizations – Extras
-  const [extras, setExtras] = useState<{ name: string; price: number }[]>([]);
+  const [extras, setExtras] = useState<{ name: string; price: number | '' }[]>([]);
 
   // Customizations – Combos
   const [combos, setCombos] = useState<
@@ -348,7 +348,7 @@ export default function MenuItemForm({
     setSizeRows((prev) =>
       prev.map((row, i) =>
         i === idx
-          ? { ...row, [field]: field === 'price' ? Number(value) || 0 : value }
+          ? { ...row, [field]: field === 'price' ? (value === '' ? '' : Number(value)) : value }
           : row
       )
     );
@@ -359,7 +359,7 @@ export default function MenuItemForm({
   };
 
   const addSizeRow = () => {
-    setSizeRows((prev) => [...prev, { name: '', price: 0 }]);
+    setSizeRows((prev) => [...prev, { name: '', price: '' }]);
   };
 
   // ---------------------------------------------------------------------------
@@ -384,7 +384,7 @@ export default function MenuItemForm({
   // ---------------------------------------------------------------------------
 
   const addExtra = () => {
-    setExtras((prev) => [...prev, { name: '', price: 0 }]);
+    setExtras((prev) => [...prev, { name: '', price: '' }]);
   };
 
   const updateExtra = (
@@ -395,7 +395,7 @@ export default function MenuItemForm({
     setExtras((prev) =>
       prev.map((row, i) =>
         i === idx
-          ? { ...row, [field]: field === 'price' ? Number(value) || 0 : value }
+          ? { ...row, [field]: field === 'price' ? (value === '' ? '' : Number(value)) : value }
           : row
       )
     );
@@ -461,9 +461,9 @@ export default function MenuItemForm({
         formData.sizes = validRows.map((r) => r.name.trim());
         formData.sizePricing = {};
         for (const row of validRows) {
-          formData.sizePricing[row.name.trim()] = row.price;
+          formData.sizePricing[row.name.trim()] = Number(row.price) || 0;
         }
-        formData.price = validRows[0]?.price ?? 0;
+        formData.price = Number(validRows[0]?.price) || 0;
       }
 
       // Spice levels
@@ -496,7 +496,7 @@ export default function MenuItemForm({
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-900/50 backdrop-blur-sm p-0 sm:p-4">
       <div className="animate-in slide-in-from-bottom-4 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200 w-full max-w-2xl max-h-[90vh] flex flex-col bg-white rounded-t-2xl sm:rounded-xl shadow-2xl overflow-hidden">
         {/* ── Header ── */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0 sticky top-0 bg-white z-10 rounded-t-2xl">
+      <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-slate-100 shrink-0 sticky top-0 bg-white z-10 rounded-t-2xl">
           <h2 className="text-lg font-semibold text-slate-900">
             {editingItem ? 'Edit Menu Item' : 'Add Menu Item'}
           </h2>
@@ -514,7 +514,7 @@ export default function MenuItemForm({
         {/* ── Scrollable Body ── */}
         <form
           onSubmit={handleSubmit}
-          className="flex-1 overflow-y-auto px-6 py-5 space-y-4"
+          className="flex-1 overflow-y-auto px-4 sm:px-6 py-5 space-y-4"
         >
           {/* ═══════════════════════════════════════════════════════════════ */}
           {/* Section 1: Basic Info */}
@@ -678,7 +678,7 @@ export default function MenuItemForm({
             ) : (
               <div className="space-y-3">
                 {sizeRows.map((row, idx) => (
-                  <div key={idx} className="flex items-center gap-2">
+                  <div key={idx} className="flex flex-wrap sm:flex-nowrap items-center gap-2">
                     <Input
                       type="text"
                       value={row.name}
@@ -688,7 +688,7 @@ export default function MenuItemForm({
                       placeholder="Size name"
                       className="flex-1"
                     />
-                    <div className="relative w-32">
+                    <div className="relative w-full sm:w-32">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
                         ₹
                       </span>
@@ -884,7 +884,7 @@ export default function MenuItemForm({
               </label>
               <div className="space-y-2 mb-3">
                 {extras.map((extra, idx) => (
-                  <div key={idx} className="flex items-center gap-2">
+                  <div key={idx} className="flex flex-wrap sm:flex-nowrap items-center gap-2">
                     <Input
                       type="text"
                       value={extra.name}
@@ -894,7 +894,7 @@ export default function MenuItemForm({
                       placeholder="Extra name"
                       className="flex-1"
                     />
-                    <div className="relative w-28">
+                    <div className="relative w-full sm:w-28">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
                         ₹
                       </span>

@@ -11,12 +11,12 @@ interface RoomType {
   id: string;
   name: string;
   description?: string;
-  baseOccupancy: number;
-  maxAdults: number;
-  maxChildren: number;
-  baseRate: number;
-  extraAdultRate: number;
-  extraChildRate: number;
+  baseOccupancy: number | '';
+  maxAdults: number | '';
+  maxChildren: number | '';
+  baseRate: number | '';
+  extraAdultRate: number | '';
+  extraChildRate: number | '';
   isActive: boolean;
 }
 
@@ -39,12 +39,12 @@ export default function RoomTypesPage() {
       const payload = {
         name: isEditing.name,
         description: isEditing.description,
-        baseOccupancy: Number(isEditing.baseOccupancy),
-        maxAdults: Number(isEditing.maxAdults),
-        maxChildren: Number(isEditing.maxChildren),
-        baseRate: Number(isEditing.baseRate),
-        extraAdultRate: Number(isEditing.extraAdultRate),
-        extraChildRate: Number(isEditing.extraChildRate),
+        baseOccupancy: Number(isEditing.baseOccupancy) || 1,
+        maxAdults: Number(isEditing.maxAdults) || 1,
+        maxChildren: Number(isEditing.maxChildren) || 0,
+        baseRate: Number(isEditing.baseRate) || 0,
+        extraAdultRate: Number(isEditing.extraAdultRate) || 0,
+        extraChildRate: Number(isEditing.extraChildRate) || 0,
         isActive: isEditing.isActive,
       };
 
@@ -75,6 +75,21 @@ export default function RoomTypesPage() {
     }
   };
 
+  const handleAddNew = () => {
+    setIsEditing({
+      id: '',
+      name: '',
+      description: '',
+      baseOccupancy: '',
+      maxAdults: '',
+      maxChildren: '',
+      baseRate: '',
+      extraAdultRate: '',
+      extraChildRate: '',
+      isActive: true,
+    });
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
@@ -83,10 +98,7 @@ export default function RoomTypesPage() {
           <p className="text-slate-500 mt-1">Define categories for your rooms — rates, occupancy limits, and extras.</p>
         </div>
         <button 
-          onClick={() => setIsEditing({
-            id: '', name: '', description: '', baseOccupancy: 2, maxAdults: 3, maxChildren: 2,
-            baseRate: 0, extraAdultRate: 0, extraChildRate: 0, isActive: true
-          })}
+          onClick={handleAddNew}
           className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
         >
           + Add Room Type
@@ -138,7 +150,7 @@ export default function RoomTypesPage() {
       {/* Modal */}
       {isEditing && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-50 animate-in fade-in duration-200">
-          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-lg shadow-xl border border-slate-200 animate-in slide-in-from-bottom-4 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200 max-h-[90vh] flex flex-col">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-lg shadow-xl border border-slate-200 animate-in slide-in-from-bottom-4 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200 max-h-[85dvh] flex flex-col">
             <div className="flex items-center justify-between p-6 border-b border-slate-100 sticky top-0 bg-white z-10 rounded-t-2xl">
               <h2 className="text-xl font-bold text-slate-800">
                 {isEditing.id ? 'Edit Room Type' : 'New Room Type'}
@@ -150,7 +162,8 @@ export default function RoomTypesPage() {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <form onSubmit={handleSave} className="overflow-y-auto p-6 space-y-5">
+            <form onSubmit={handleSave} className="flex flex-col flex-1 min-h-0">
+              <div className="overflow-y-auto p-6 space-y-5 flex-1">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium text-slate-700">Name</label>
@@ -158,7 +171,7 @@ export default function RoomTypesPage() {
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium text-slate-700">Base Rate (₹)</label>
-                  <input type="number" required value={isEditing.baseRate} onChange={e => setIsEditing({...isEditing, baseRate: Number(e.target.value)})} className="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-slate-900 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm" />
+                  <input type="number" required value={isEditing.baseRate} placeholder="0" onChange={e => setIsEditing({...isEditing, baseRate: e.target.value === '' ? '' : Number(e.target.value)})} className="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-slate-900 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm" />
                 </div>
                 <div className="sm:col-span-2 space-y-1.5">
                   <label className="text-sm font-medium text-slate-700">Description</label>
@@ -166,30 +179,31 @@ export default function RoomTypesPage() {
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium text-slate-700">Base Occupancy</label>
-                  <input type="number" required value={isEditing.baseOccupancy} onChange={e => setIsEditing({...isEditing, baseOccupancy: Number(e.target.value)})} className="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-slate-900 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm" />
+                  <input type="number" required value={isEditing.baseOccupancy} placeholder="2" onChange={e => setIsEditing({...isEditing, baseOccupancy: e.target.value === '' ? '' : Number(e.target.value)})} className="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-slate-900 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm" />
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium text-slate-700">Max Adults</label>
-                  <input type="number" required value={isEditing.maxAdults} onChange={e => setIsEditing({...isEditing, maxAdults: Number(e.target.value)})} className="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-slate-900 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm" />
+                  <input type="number" required value={isEditing.maxAdults} placeholder="2" onChange={e => setIsEditing({...isEditing, maxAdults: e.target.value === '' ? '' : Number(e.target.value)})} className="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-slate-900 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm" />
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium text-slate-700">Max Children</label>
-                  <input type="number" required value={isEditing.maxChildren ?? 2} onChange={e => setIsEditing({...isEditing, maxChildren: Number(e.target.value)})} className="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-slate-900 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm" />
+                  <input type="number" required value={isEditing.maxChildren ?? ''} placeholder="0" onChange={e => setIsEditing({...isEditing, maxChildren: e.target.value === '' ? '' : Number(e.target.value)})} className="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-slate-900 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm" />
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium text-slate-700">Extra Adult Rate (₹)</label>
-                  <input type="number" required value={isEditing.extraAdultRate} onChange={e => setIsEditing({...isEditing, extraAdultRate: Number(e.target.value)})} className="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-slate-900 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm" />
+                  <input type="number" required value={isEditing.extraAdultRate} placeholder="0" onChange={e => setIsEditing({...isEditing, extraAdultRate: e.target.value === '' ? '' : Number(e.target.value)})} className="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-slate-900 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm" />
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium text-slate-700">Extra Child Rate (₹)</label>
-                  <input type="number" required value={isEditing.extraChildRate} onChange={e => setIsEditing({...isEditing, extraChildRate: Number(e.target.value)})} className="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-slate-900 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm" />
+                  <input type="number" required value={isEditing.extraChildRate} placeholder="0" onChange={e => setIsEditing({...isEditing, extraChildRate: e.target.value === '' ? '' : Number(e.target.value)})} className="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-slate-900 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm" />
                 </div>
               </div>
               <div className="flex items-center gap-2">
                 <input type="checkbox" id="isActive" checked={isEditing.isActive} onChange={e => setIsEditing({...isEditing, isActive: e.target.checked})} className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
                 <label htmlFor="isActive" className="text-sm text-slate-700">Active</label>
               </div>
-              <div className="flex justify-end gap-3 pt-5 border-t border-slate-100">
+              </div>
+              <div className="flex justify-end gap-3 p-4 sm:p-6 border-t border-slate-100 bg-white shrink-0 sm:rounded-b-2xl">
                 <button type="button" onClick={() => setIsEditing(null)} className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors">Cancel</button>
                 <button type="submit" className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors">Save Room Type</button>
               </div>

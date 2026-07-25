@@ -312,7 +312,7 @@ function BookingsContent() {
                         {new Date(booking.checkInDate).toLocaleDateString()} - {new Date(booking.checkOutDate).toLocaleDateString()}
                       </div>
                       
-                      <div className="flex justify-end pt-1 border-t border-slate-50 gap-2">
+                      <div className="flex justify-end flex-wrap pt-1 border-t border-slate-50 gap-1.5">
                         {booking.status === 'RESERVED' && (
                           <>
                             <Button variant="outline" size="sm" className="h-8 text-xs text-red-600 hover:bg-red-50 hover:text-red-700 border-red-200" onClick={() => handleAction(booking.id, 'cancel')}>Cancel</Button>

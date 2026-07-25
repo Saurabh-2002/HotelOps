@@ -18,3 +18,7 @@ As an AI assistant working on the HotelOps project, you MUST strictly adhere to 
 ## 4. Mandatory Verification
 - Never submit unverified code. 
 - Before declaring a feature complete, you must run `npm run build` (or `npx next build`) to verify there are absolutely zero TypeScript or compilation errors.
+
+## 5. Responsive Design First
+- **Always** ensure that newly added features, modals, tables, and layouts are fully responsive out of the box.
+- Test and verify layouts for mobile (`sm:`), tablet (`md:`), and desktop (`lg:`, `xl:`) using Tailwind CSS responsive prefixes. No horizontal scrolling should occur on mobile devices unless explicitly contained (e.g. `overflow-x-auto` on tables).

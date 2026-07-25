@@ -16,7 +16,8 @@ import type { MenuItemFormData } from './components/MenuItemForm';
 import MenuItemCard from './components/MenuItemCard';
 import OrderCustomizationModal from './components/OrderCustomizationModal';
 import type { OrderItemSelection } from './components/OrderCustomizationModal';
-import CurrentOrderPanel from './components/CurrentOrderPanel';
+import CurrentOrderPanel, { OrderContent } from './components/CurrentOrderPanel';
+import MobileCartDrawer from './components/MobileCartDrawer';
 
 type MenuItem = {
   id: string;
@@ -72,6 +73,9 @@ export default function PosPage() {
   // Customization Modal State
   const [customizingItem, setCustomizingItem] = useState<MenuItem | null>(null);
   const [isCustomizationOpen, setIsCustomizationOpen] = useState(false);
+
+  // Mobile Cart Drawer State
+  const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
 
   // Dialogs
   const [alertConfig, setAlertConfig] = useState<{isOpen: boolean, title?: string, message: string, type: 'error'|'success'|'info'}>({ isOpen: false, message: '', type: 'info' });
@@ -466,10 +470,10 @@ export default function PosPage() {
         </div>
       ) : (
         /* ======================== TERMINAL TAB ======================== */
-        <div className="flex-1 flex flex-col md:flex-row gap-4 md:gap-6 overflow-hidden min-h-0 md:min-h-[500px]">
+        <div className="flex-1 flex flex-col md:flex-row gap-4 md:gap-6 md:overflow-hidden min-h-0 md:min-h-[500px]">
           {/* Left: Menu Grid */}
           <Card className="flex-1 flex flex-col border-none shadow-md overflow-hidden bg-white">
-            <div className="flex overflow-x-auto p-4 border-b border-slate-100 gap-2 shrink-0">
+            <div className="flex overflow-x-auto p-3 md:p-4 border-b border-slate-100 gap-2 shrink-0 scrollbar-hide">
               {categories.map(c => (
                 <Button
                   key={c}
@@ -502,6 +506,7 @@ export default function PosPage() {
           </Card>
 
           {/* Right: Current Order */}
+          {/* Desktop: Inline order panel */}
           <CurrentOrderPanel
             orderItems={orderItems}
             activeBookings={activeBookings}
@@ -512,6 +517,61 @@ export default function PosPage() {
             onSubmitOrder={handleSubmitOrder}
             isSubmitting={isSubmittingOrder}
           />
+
+          {/* Mobile: Floating Cart Bar */}
+          {orderItems.length > 0 && (
+            <div className="md:hidden fixed bottom-20 left-4 right-4 z-40">
+              <button
+                onClick={() => setIsMobileCartOpen(true)}
+                className="w-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-2xl px-5 py-3.5 shadow-lg shadow-blue-600/30 flex items-center justify-between transition-all"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="bg-white/20 rounded-lg px-2.5 py-1 text-sm font-bold">
+                    {orderItems.reduce((sum, item) => sum + item.quantity, 0)}
+                  </span>
+                  <span className="font-semibold text-sm">View Cart</span>
+                </div>
+                <span className="font-bold text-base">
+                  ₹{orderItems.reduce((sum, item) => {
+                    let base = Number(item.menuItem.price);
+                    if (item.selectedSize && item.menuItem.sizePricing) {
+                      base = item.menuItem.sizePricing[item.selectedSize.toLowerCase()] || base;
+                    }
+                    const extrasTotal = item.extras.reduce((s, e) => s + e.price, 0);
+                    const comboTotal = item.comboItems.reduce((s, c) => s + c.price, 0);
+                    return sum + (base + extrasTotal + comboTotal) * item.quantity;
+                  }, 0).toLocaleString('en-IN')}
+                </span>
+              </button>
+            </div>
+          )}
+
+          {/* Mobile: Cart Drawer */}
+          <MobileCartDrawer
+            isOpen={isMobileCartOpen}
+            onClose={() => setIsMobileCartOpen(false)}
+            itemCount={orderItems.reduce((sum, item) => sum + item.quantity, 0)}
+            total={orderItems.reduce((sum, item) => {
+              let base = Number(item.menuItem.price);
+              if (item.selectedSize && item.menuItem.sizePricing) {
+                base = item.menuItem.sizePricing[item.selectedSize.toLowerCase()] || base;
+              }
+              const extrasTotal = item.extras.reduce((s, e) => s + e.price, 0);
+              const comboTotal = item.comboItems.reduce((s, c) => s + c.price, 0);
+              return sum + (base + extrasTotal + comboTotal) * item.quantity;
+            }, 0)}
+          >
+            <OrderContent
+              orderItems={orderItems}
+              activeBookings={activeBookings}
+              selectedBookingId={selectedBookingId}
+              onBookingChange={setSelectedBookingId}
+              onUpdateQuantity={updateQuantity}
+              onRemoveItem={removeFromOrder}
+              onSubmitOrder={async () => { await handleSubmitOrder(); setIsMobileCartOpen(false); }}
+              isSubmitting={isSubmittingOrder}
+            />
+          </MobileCartDrawer>
         </div>
       )}
 

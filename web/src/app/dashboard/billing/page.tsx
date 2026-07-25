@@ -661,11 +661,11 @@ export default function BillingPage() {
               </button>
             </div>
             
-            <div className="p-10 print:p-8 bg-white">
+            <div className="p-5 sm:p-10 print:p-8 bg-white">
               {/* Formal Invoice Header */}
-              <div className="flex justify-between items-start mb-10 border-b border-slate-200 pb-8">
+              <div className="flex flex-col sm:flex-row gap-4 justify-between items-start mb-10 border-b border-slate-200 pb-8">
                 <div>
-                  <h2 className="text-3xl font-bold text-slate-900 mb-2">{settings?.propertyName || 'Hotel Name'}</h2>
+                  <h2 className="text-xl sm:text-3xl font-bold text-slate-900 mb-2">{settings?.propertyName || 'Hotel Name'}</h2>
                   {settings?.address && <p className="text-sm text-slate-600">{settings.address}</p>}
                   {settings?.city && <p className="text-sm text-slate-600">{settings.city}</p>}
                   <p className="text-sm text-slate-600 mt-2">
@@ -675,13 +675,13 @@ export default function BillingPage() {
                   {settings?.gstin && <p className="text-sm font-semibold text-slate-800 mt-2">GSTIN: {settings.gstin}</p>}
                 </div>
                 <div className="text-right">
-                  <h1 className="text-4xl font-bold text-slate-200 uppercase tracking-wider mb-2">Invoice</h1>
+                  <h1 className="text-2xl sm:text-4xl font-bold text-slate-200 uppercase tracking-wider mb-2">Invoice</h1>
                   <p className="text-slate-900 font-semibold text-lg">{settings?.invoicePrefix || 'INV-'}{invoiceData.folio.id.substring(0, 6).toUpperCase()}</p>
                   <p className="text-sm text-slate-500 mt-1">Date & Time: {new Date().toLocaleString()}</p>
                 </div>
               </div>
 
-              <div className="flex justify-between mb-8">
+              <div className="flex flex-col sm:flex-row gap-4 justify-between mb-8">
                 <div>
                   <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Billed To</p>
                   <p className="font-bold text-lg text-slate-900">{invoiceData.breakdown.guestName}</p>
@@ -709,7 +709,7 @@ export default function BillingPage() {
                 </div>
               </div>
 
-              <div className="bg-slate-50 rounded-lg overflow-hidden border border-slate-200 print:bg-transparent">
+              <div className="bg-slate-50 rounded-lg overflow-x-auto border border-slate-200 print:bg-transparent">
                 <table className="w-full text-left text-sm">
                   <thead className="bg-slate-100 text-slate-700 font-medium print:bg-slate-50">
                     <tr>
@@ -788,7 +788,7 @@ export default function BillingPage() {
                 </table>
               </div>
 
-              <div className="mt-8 flex justify-end space-x-3 print:hidden">
+              <div className="mt-8 flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 print:hidden">
                 <Button
                   type="button"
                   variant="outline"

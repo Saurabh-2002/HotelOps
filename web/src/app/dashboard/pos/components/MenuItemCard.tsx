@@ -121,7 +121,7 @@ export default function MenuItemCard({ item, onClick }: MenuItemCardProps) {
             </div>
             
             {/* Action button hint */}
-            <div className="h-8 w-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 opacity-0 group-hover:opacity-100 transition-all transform translate-y-2 group-hover:translate-y-0">
+            <div className="h-9 w-9 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all transform translate-y-0 md:translate-y-2 md:group-hover:translate-y-0 active:scale-95">
               <Plus className="h-4 w-4" />
             </div>
           </div>

@@ -357,9 +357,9 @@ export default function RoomsPage() {
                             {room.status === 'OUT_OF_ORDER' && room.maintenanceNotes && (
                               <div className="relative group flex items-center justify-center">
                                 <Info className="w-3.5 h-3.5 text-rose-400 group-hover:text-rose-600 transition-colors cursor-help" />
-                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-[200px] bg-slate-900 text-white text-xs rounded shadow-lg p-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-pre-wrap text-center font-normal tracking-normal">
+                                <div className="absolute bottom-full left-auto right-0 mb-2 w-max max-w-[200px] bg-slate-900 text-white text-xs rounded shadow-lg p-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-pre-wrap text-center font-normal tracking-normal">
                                   {room.maintenanceNotes}
-                                  <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-slate-900 rotate-45"></div>
+                                  <div className="absolute -bottom-1 right-2 w-2 h-2 bg-slate-900 rotate-45"></div>
                                 </div>
                               </div>
                             )}
@@ -421,7 +421,7 @@ export default function RoomsPage() {
 
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-900/50 backdrop-blur-sm p-0 sm:p-4 animate-in fade-in duration-200">
-          <div className="relative w-full max-w-2xl bg-white rounded-t-2xl sm:rounded-2xl shadow-xl border border-slate-200 animate-in slide-in-from-bottom-4 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200 max-h-[90vh] flex flex-col">
+          <div className="relative w-full max-w-2xl bg-white rounded-t-2xl sm:rounded-2xl shadow-xl border border-slate-200 animate-in slide-in-from-bottom-4 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200 max-h-[85dvh] flex flex-col">
             <div className="flex items-center justify-between p-6 border-b border-slate-100 sticky top-0 bg-white z-10 rounded-t-2xl">
               <h3 className="text-lg font-semibold text-slate-900">
                 {editingRoomId ? 'Edit Room' : 'Add New Room'}
@@ -434,7 +434,8 @@ export default function RoomsPage() {
               </button>
             </div>
             
-            <form onSubmit={handleSaveRoom} className="overflow-y-auto p-6 space-y-5">
+            <form onSubmit={handleSaveRoom} className="flex flex-col flex-1 min-h-0">
+              <div className="overflow-y-auto p-6 space-y-5 flex-1">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">Room Number</label>
                 <div className="relative">
@@ -551,7 +552,8 @@ export default function RoomsPage() {
                 </div>
               )}
 
-              <div className="pt-5 mt-2 flex justify-end space-x-3 border-t border-slate-100">
+              </div>
+              <div className="flex justify-end gap-3 p-4 sm:p-6 border-t border-slate-100 bg-white shrink-0 sm:rounded-b-2xl">
                 <button 
                   type="button" 
                   onClick={() => setIsModalOpen(false)} 

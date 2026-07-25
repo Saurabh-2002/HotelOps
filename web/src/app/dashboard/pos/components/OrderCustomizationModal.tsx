@@ -345,13 +345,13 @@ export default function OrderCustomizationModal({
         </div>
 
         {/* Footer */}
-        <div className="border-t border-slate-100 p-4 bg-slate-50 rounded-b-2xl flex items-center justify-between gap-4">
+        <div className="border-t border-slate-100 p-4 bg-slate-50 rounded-b-2xl flex items-center justify-between gap-3 shrink-0">
           <div>
             <div className="text-xs text-slate-500 font-medium">Total</div>
             <div className="text-xl font-bold text-slate-900">₹{totalPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
           </div>
-          <Button size="lg" className="px-8 text-base font-semibold" onClick={handleAdd}>
-            <Plus className="w-5 h-5 mr-2" />
+          <Button size="lg" className="px-5 sm:px-8 text-sm sm:text-base font-semibold" onClick={handleAdd}>
+            <Plus className="w-5 h-5 mr-1.5 sm:mr-2" />
             Add to Order
           </Button>
         </div>

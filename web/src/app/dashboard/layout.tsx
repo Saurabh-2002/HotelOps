@@ -3,12 +3,30 @@
 import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, BedDouble, CalendarDays, ReceiptText, LogOut, UtensilsCrossed } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { LayoutDashboard, BedDouble, CalendarDays, ReceiptText, LogOut, UtensilsCrossed, Menu, X, Settings } from 'lucide-react';
 import { LayoutSkeleton } from '@/components/Skeletons';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, logout, isLoading } = useAuth();
   const pathname = usePathname();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const bottomNavRef = useRef<HTMLDivElement>(null);
+
+  // Close mobile menu on route change
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [pathname]);
+
+  // Prevent body scroll when mobile menu is open
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [isMobileMenuOpen]);
 
   if (isLoading) {
     return <LayoutSkeleton />;
@@ -29,7 +47,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         { name: 'Restaurant POS', href: '/dashboard/pos', icon: UtensilsCrossed },
       ] : []),
       { name: 'Billing', href: '/dashboard/billing', icon: ReceiptText },
-      { name: 'Settings', href: '/dashboard/settings', icon: LayoutDashboard },
+      { name: 'Settings', href: '/dashboard/settings', icon: Settings },
     ];
 
   return (
@@ -82,9 +100,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* Mobile Header */}
         <header className="md:hidden h-14 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-4 shrink-0 shadow-sm z-10 print:hidden">
           <h1 className="text-lg font-bold text-white tracking-tight">HotelOps</h1>
-          <button onClick={logout} className="p-2 text-slate-300 hover:text-white">
-            <LogOut className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="p-2 text-slate-300 hover:text-white rounded-lg transition-colors"
+              aria-label="Open menu"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+          </div>
         </header>
 
         {/* Desktop Header */}
@@ -100,8 +124,69 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       </main>
 
+      {/* Mobile Slide-Over Menu */}
+      {isMobileMenuOpen && (
+        <div className="md:hidden fixed inset-0 z-[70]">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+          {/* Drawer */}
+          <div className="absolute top-0 right-0 w-72 h-full bg-slate-900 text-slate-300 flex flex-col shadow-2xl animate-slide-in-right">
+            <div className="h-14 flex items-center justify-between px-4 border-b border-slate-800 shrink-0">
+              <div>
+                <div className="text-sm font-semibold text-white truncate">{user.tenantName}</div>
+                <div className="text-[11px] text-slate-400 truncate">{user.name} ({user.role})</div>
+              </div>
+              <button
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-white rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-1">
+              {navItems.map((item) => {
+                const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={`flex items-center px-3 py-3 rounded-lg text-sm font-medium transition-colors ${
+                      isActive
+                        ? 'bg-blue-600 text-white'
+                        : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                    }`}
+                  >
+                    <Icon className={`mr-3 flex-shrink-0 h-5 w-5 ${isActive ? 'text-blue-200' : 'text-slate-400'}`} />
+                    {item.name}
+                  </Link>
+                );
+              })}
+            </nav>
+
+            <div className="p-4 border-t border-slate-800 shrink-0">
+              <button
+                onClick={() => { logout(); setIsMobileMenuOpen(false); }}
+                className="flex items-center w-full px-3 py-3 text-sm font-medium rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
+              >
+                <LogOut className="mr-3 h-5 w-5 text-slate-400" />
+                Sign out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Bottom Tab Bar (Mobile Only) */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-white border-t border-slate-200 flex items-center justify-around px-2 pb-safe shadow-[0_-4px_6px_-1px_rgb(0,0,0,0.05)] z-50 print:hidden">
+      <nav
+        ref={bottomNavRef}
+        className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-white border-t border-slate-200 flex items-center overflow-x-auto scrollbar-hide px-1 pb-safe shadow-[0_-4px_6px_-1px_rgb(0,0,0,0.05)] z-40 print:hidden"
+      >
         {navItems.map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
           const Icon = item.icon;
@@ -109,12 +194,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <Link
               key={item.name}
               href={item.href}
-              className={`flex flex-col items-center justify-center w-full h-full space-y-1 ${
-                isActive ? 'text-blue-600' : 'text-slate-500 hover:text-slate-900'
+              className={`flex flex-col items-center justify-center min-w-[56px] flex-1 h-full space-y-0.5 px-1 ${
+                isActive ? 'text-blue-600' : 'text-slate-500 active:text-slate-900'
               }`}
             >
-              <Icon className={`h-5 w-5 ${isActive ? 'fill-blue-100/50' : ''}`} />
-              <span className="text-[10px] font-medium leading-none truncate max-w-[60px] text-center">
+              <Icon className={`h-5 w-5 shrink-0 ${isActive ? 'fill-blue-100/50' : ''}`} />
+              <span className="text-[9px] font-medium leading-none truncate max-w-[56px] text-center">
                 {item.name.replace('Restaurant ', '')}
               </span>
             </Link>
