@@ -34,11 +34,11 @@ services:
       context: ./web
       dockerfile: Dockerfile
       args:
-        - NEXT_PUBLIC_API_URL=http://api.80.225.223.71.nip.io
+        - NEXT_PUBLIC_API_URL=http://api.80.225.223.71.nip.io/api
     container_name: hotelops-frontend
     environment:
       - NODE_ENV=production
-      - NEXT_PUBLIC_API_URL=http://api.80.225.223.71.nip.io
+      - NEXT_PUBLIC_API_URL=http://api.80.225.223.71.nip.io/api
     restart: always
     networks:
       - hotelops-network
