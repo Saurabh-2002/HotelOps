@@ -12,10 +12,12 @@ import { PosModule } from './pos/pos.module';
 import { PropertySettingsModule } from './property-settings/property-settings.module';
 import { RoomTypesModule } from './room-types/room-types.module';
 import { AnalyticsModule } from './analytics/analytics.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ScheduleModule.forRoot(),
     PrismaModule,
     AuthModule,
     TenantsModule,

@@ -27,6 +27,15 @@ export class AuthService {
   }
 
   async login(user: any) {
+    if (user.tenantId) {
+      await this.prisma.withBypassRls(async (tx) => {
+        await tx.tenant.update({
+          where: { id: user.tenantId },
+          data: { lastLogin: new Date() },
+        });
+      });
+    }
+
     const payload = { 
       sub: user.id, 
       email: user.email, 

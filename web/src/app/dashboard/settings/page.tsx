@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { apiFetch } from '@/lib/api';
 import TimePicker from '@/components/TimePicker';
 import { useAuth } from '@/context/AuthContext';
-import { Building2, Utensils, CheckCircle2 } from 'lucide-react';
+import { Building2, Utensils, CheckCircle2, AlertTriangle } from 'lucide-react';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 
 interface PropertySettings {
   propertyName: string;
@@ -31,9 +32,11 @@ export default function SettingsPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, logout } = useAuth();
   const [activeModules, setActiveModules] = useState<string[]>([]);
   const [savingModules, setSavingModules] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (user?.activeModules) {
@@ -95,6 +98,20 @@ export default function SettingsPage() {
       if (prev.includes(module)) return prev.filter(m => m !== module);
       return [...prev, module];
     });
+  };
+
+  const handleDeleteAccount = async () => {
+    setDeleting(true);
+    try {
+      await apiFetch('/tenants/me', { method: 'DELETE' });
+      // On success, redirect and clear session
+      logout();
+    } catch (err: any) {
+      setError(err.message || 'Failed to delete account');
+      setShowDeleteConfirm(false);
+    } finally {
+      setDeleting(false);
+    }
   };
 
 
@@ -255,7 +272,7 @@ export default function SettingsPage() {
             </div>
           </div>
 
-        <div className="flex justify-end pt-6 border-t border-slate-100">
+          <div className="flex justify-end pt-6 border-t border-slate-100">
             <button 
               onClick={handleSaveModules}
               disabled={savingModules}
@@ -266,6 +283,40 @@ export default function SettingsPage() {
           </div>
         </div>
       )}
+
+      {/* Danger Zone Section */}
+      {user?.role === 'OWNER' && (
+        <div className="bg-red-50 border border-red-200 p-4 sm:p-8 rounded-xl shadow-sm space-y-6 mt-8">
+          <div>
+            <div className="flex items-center gap-2 text-red-700 mb-1">
+              <AlertTriangle className="w-5 h-5" />
+              <h2 className="text-xl font-semibold">Danger Zone</h2>
+            </div>
+            <p className="text-sm text-red-600/80">Permanently delete your account and all associated data.</p>
+          </div>
+          
+          <div className="pt-4 border-t border-red-200/50">
+            <button 
+              type="button"
+              onClick={() => setShowDeleteConfirm(true)}
+              className="px-5 py-2.5 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors focus:ring-4 focus:ring-red-100 active:bg-red-800"
+            >
+              Delete Account
+            </button>
+          </div>
+        </div>
+      )}
+
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        title="Delete Account?"
+        message="Are you absolutely sure you want to permanently delete your account? This action will immediately and irreversibly erase all your rooms, bookings, orders, and data. You cannot undo this."
+        confirmText={deleting ? "Deleting..." : "Yes, Delete Everything"}
+        cancelText="Cancel"
+        isDestructive={true}
+        onConfirm={handleDeleteAccount}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </div>
   );
 }

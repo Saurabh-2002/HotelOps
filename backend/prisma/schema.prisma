@@ -53,6 +53,7 @@ model Tenant {
   activeModules     String[] // e.g. ["RESTAURANT", "HOUSEKEEPING"]
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
+  lastLogin         DateTime @default(now())
 
   users             User[]
   rooms             Room[]
@@ -68,7 +69,7 @@ model Tenant {
 model User {
   id             String   @id @default(uuid())
   tenantId       String?  // Nullable for Super-Admins
-  tenant         Tenant?  @relation(fields: [tenantId], references: [id])
+  tenant         Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   name           String
   email          String   @unique
   hashedPassword String
@@ -82,7 +83,7 @@ model User {
 model Room {
   id          String   @id @default(uuid())
   tenantId    String
-  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   roomNumber  String
   roomTypeId  String?  // Made optional for migration backfill
   roomType    RoomType? @relation(fields: [roomTypeId], references: [id])
@@ -103,7 +104,7 @@ model Room {
 model Booking {
   id             String   @id @default(uuid())
   tenantId       String
-  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   roomId         String
   room           Room     @relation(fields: [roomId], references: [id])
   checkInDate    DateTime @db.Date
@@ -122,7 +123,7 @@ model Booking {
 model GuestRecord {
   id                  String   @id @default(uuid())
   tenantId            String
-  tenant              Tenant   @relation(fields: [tenantId], references: [id])
+  tenant              Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   bookingId           String
   booking             Booking  @relation(fields: [bookingId], references: [id])
   fullName            String
@@ -141,7 +142,7 @@ model GuestRecord {
 model Folio {
   id          String   @id @default(uuid())
   tenantId    String
-  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   bookingId   String
   booking     Booking  @relation(fields: [bookingId], references: [id])
   totalAmount Decimal  @db.Decimal(10, 2)
@@ -175,7 +176,7 @@ enum PaymentStatus {
 model MenuItem {
   id              String   @id @default(uuid())
   tenantId        String
-  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   itemCode        String?              // Human-readable code, e.g., "MC102"
   name            String
   category        String
@@ -207,7 +208,7 @@ model MenuItem {
 model PosOrder {
   id          String   @id @default(uuid())
   tenantId    String
-  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   bookingId   String?  // Optional: Link to a room/booking
   booking     Booking? @relation(fields: [bookingId], references: [id])
   status      PosOrderStatus @default(KOT_PRINTED)
@@ -243,7 +244,7 @@ model PosOrderItem {
 model PropertySettings {
   id                String   @id @default(uuid())
   tenantId          String   @unique
-  tenant            Tenant   @relation(fields: [tenantId], references: [id])
+  tenant            Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   propertyName      String
   legalName         String?
   address           String?
@@ -266,7 +267,7 @@ model PropertySettings {
 model RoomType {
   id             String   @id @default(uuid())
   tenantId       String
-  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   name           String
   description    String?
   baseOccupancy  Int      @default(2)
