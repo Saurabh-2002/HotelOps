@@ -9,6 +9,7 @@ import { TableSkeleton } from '@/components/Skeletons';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Select } from '@/components/ui/select';
 
 type RoomType = {
   id: string;
@@ -460,10 +461,10 @@ export default function RoomsPage() {
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                       <Tag className="w-4 h-4 text-slate-400" />
                     </div>
-                    <select 
-                      className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white text-sm transition-shadow shadow-sm" 
+                    <Select 
+                      className="w-full pl-9 bg-white shadow-sm" 
                       value={formData.roomTypeId} 
-                      onChange={(e) => {
+                      onChange={(e: any) => {
                         const selectedType = roomTypes.find(rt => rt.id === e.target.value);
                         setFormData({
                           ...formData, 
@@ -471,12 +472,12 @@ export default function RoomsPage() {
                           baseRate: selectedType ? String(Number(selectedType.baseRate)) : formData.baseRate
                         });
                       }}
+                      placeholder="Select a room type..."
                     >
-                      <option value="">Select a room type...</option>
                       {roomTypes.map(rt => (
                         <option key={rt.id} value={rt.id}>{rt.name} — ₹{Number(rt.baseRate).toLocaleString()}</option>
                       ))}
-                    </select>
+                    </Select>
                   </div>
                 ) : (
                   <p className="text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded-lg p-3">
@@ -525,15 +526,15 @@ export default function RoomsPage() {
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                       <Activity className="w-4 h-4 text-slate-400" />
                     </div>
-                    <select
-                      className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm transition-shadow shadow-sm bg-white"
+                    <Select
+                      className="w-full pl-9 bg-white shadow-sm"
                       value={formData.status}
-                      onChange={(e) => setFormData({...formData, status: e.target.value})}
+                      onChange={(e: any) => setFormData({...formData, status: e.target.value})}
                     >
                       <option value="CLEAN">Clean</option>
                       <option value="DIRTY">Dirty</option>
                       <option value="OUT_OF_ORDER">Out of Order</option>
-                    </select>
+                    </Select>
                   </div>
                 </div>
               </div>
