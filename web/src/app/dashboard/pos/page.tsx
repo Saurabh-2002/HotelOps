@@ -253,7 +253,25 @@ export default function PosPage() {
   };
 
   const addToOrder = (selection: OrderItemSelection) => {
-    setOrderItems(prev => [...prev, selection]);
+    setOrderItems(prev => {
+      const existingItemIndex = prev.findIndex(item => 
+        item.menuItem.id === selection.menuItem.id &&
+        item.notes === selection.notes &&
+        JSON.stringify(item.extras) === JSON.stringify(selection.extras) &&
+        JSON.stringify(item.comboItems) === JSON.stringify(selection.comboItems)
+      );
+
+      if (existingItemIndex >= 0) {
+        const newItems = [...prev];
+        newItems[existingItemIndex] = {
+          ...newItems[existingItemIndex],
+          quantity: newItems[existingItemIndex].quantity + selection.quantity,
+        };
+        return newItems;
+      }
+      
+      return [...prev, selection];
+    });
   };
 
   const updateQuantity = (index: number, delta: number) => {
