@@ -8,6 +8,10 @@ const nextConfig: NextConfig = {
         source: '/api/:path*',
         destination: 'http://api.80.225.223.71.nip.io/api/:path*',
       },
+      {
+        source: '/uploads/:path*',
+        destination: 'http://api.80.225.223.71.nip.io/uploads/:path*',
+      },
     ];
   },
 };
