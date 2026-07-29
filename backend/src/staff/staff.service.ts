@@ -74,6 +74,9 @@ export class StaffService {
     if (targetUser.role === 'OWNER' && currentUserRole !== 'OWNER') {
       throw new ForbiddenException('Managers cannot modify Owner accounts');
     }
+    if (targetUser.role === 'OWNER' && dto.role && dto.role !== 'OWNER') {
+      throw new ForbiddenException('Owner accounts cannot be downgraded to another role');
+    }
     if (dto.role === 'SUPER_ADMIN') {
       throw new ForbiddenException('Cannot change role to SUPER_ADMIN');
     }

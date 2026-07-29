@@ -311,6 +311,8 @@ export default function StaffPage() {
                 <Select
                   value={formData.role}
                   onChange={e => setFormData({ ...formData, role: e.target.value })}
+                  disabled={editingStaff?.role === 'OWNER'}
+                  className={editingStaff?.role === 'OWNER' ? 'bg-slate-50 cursor-not-allowed' : ''}
                 >
                   {AVAILABLE_ROLES.map(role => (
                     <option key={role.value} value={role.value}>
