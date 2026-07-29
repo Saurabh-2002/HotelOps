@@ -9,9 +9,11 @@ export class StaffService {
   constructor(private readonly prisma: PrismaService) {}
 
   async findAll(tenantId: string) {
-    const users = await this.prisma.user.findMany({
-      where: { tenantId },
-      orderBy: { createdAt: 'desc' },
+    const users = await this.prisma.withTenant(tenantId, async (tx) => {
+      return tx.user.findMany({
+        where: { tenantId },
+        orderBy: { createdAt: 'desc' },
+      });
     });
     // Strip passwords
     return users.map(({ hashedPassword, ...rest }) => rest);
@@ -40,14 +42,16 @@ export class StaffService {
     const hashedPassword = await bcrypt.hash(dto.password, saltRounds);
 
     // 4. Create user
-    const user = await this.prisma.user.create({
-      data: {
-        tenantId,
-        name: dto.name,
-        email: dto.email,
-        hashedPassword,
-        role: dto.role,
-      },
+    const user = await this.prisma.withTenant(tenantId, async (tx) => {
+      return tx.user.create({
+        data: {
+          tenantId,
+          name: dto.name,
+          email: dto.email,
+          hashedPassword,
+          role: dto.role,
+        },
+      });
     });
 
     const { hashedPassword: _, ...rest } = user;
@@ -56,8 +60,10 @@ export class StaffService {
 
   async update(tenantId: string, id: string, currentUserRole: string, dto: UpdateStaffDto) {
     // 1. Fetch user to ensure it exists and belongs to tenant
-    const targetUser = await this.prisma.user.findFirst({
-      where: { id, tenantId },
+    const targetUser = await this.prisma.withTenant(tenantId, async (tx) => {
+      return tx.user.findFirst({
+        where: { id, tenantId },
+      });
     });
 
     if (!targetUser) {
@@ -96,9 +102,11 @@ export class StaffService {
       updateData.hashedPassword = await bcrypt.hash(dto.password, saltRounds);
     }
 
-    const updatedUser = await this.prisma.user.update({
-      where: { id },
-      data: updateData,
+    const updatedUser = await this.prisma.withTenant(tenantId, async (tx) => {
+      return tx.user.update({
+        where: { id },
+        data: updateData,
+      });
     });
 
     const { hashedPassword: _, ...rest } = updatedUser;
@@ -110,8 +118,10 @@ export class StaffService {
       throw new ForbiddenException('Cannot delete your own account. Contact an administrator.');
     }
 
-    const targetUser = await this.prisma.user.findFirst({
-      where: { id, tenantId },
+    const targetUser = await this.prisma.withTenant(tenantId, async (tx) => {
+      return tx.user.findFirst({
+        where: { id, tenantId },
+      });
     });
 
     if (!targetUser) {
@@ -122,8 +132,10 @@ export class StaffService {
       throw new ForbiddenException('Managers cannot delete Owner accounts');
     }
 
-    await this.prisma.user.delete({
-      where: { id },
+    await this.prisma.withTenant(tenantId, async (tx) => {
+      await tx.user.delete({
+        where: { id },
+      });
     });
 
     return { success: true };
