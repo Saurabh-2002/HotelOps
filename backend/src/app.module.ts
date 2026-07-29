@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
@@ -14,10 +16,14 @@ import { RoomTypesModule } from './room-types/room-types.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { StaffModule } from './staff/staff.module';
+import { UploadModule } from './upload/upload.module';
+import { AttendanceModule } from './attendance/attendance.module';
+import { LeaveModule } from './leave/leave.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ServeStaticModule.forRoot({ rootPath: join(process.cwd(), 'public') }),
     ScheduleModule.forRoot(),
     PrismaModule,
     AuthModule,
@@ -30,6 +36,9 @@ import { StaffModule } from './staff/staff.module';
     RoomTypesModule,
     AnalyticsModule,
     StaffModule,
+    UploadModule,
+    AttendanceModule,
+    LeaveModule,
   ],
   controllers: [AppController],
   providers: [AppService],

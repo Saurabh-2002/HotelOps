@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import useSWR from 'swr';
 import { apiFetch, fetcher } from '@/lib/api';
-import { Plus, Pencil, Trash2, Shield, User, Users } from 'lucide-react';
+import { Plus, Pencil, Trash2, Shield, User, Users, Camera } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -18,6 +18,9 @@ type StaffMember = {
   name: string;
   email: string;
   role: string;
+  avatarUrl?: string;
+  joiningDate?: string;
+  endingDate?: string;
   createdAt: string;
 };
 
@@ -44,6 +47,9 @@ export default function StaffPage() {
     email: '',
     password: '',
     role: 'FRONT_DESK',
+    avatarUrl: '',
+    joiningDate: '',
+    endingDate: '',
   });
 
   const [alertConfig, setAlertConfig] = useState<{ isOpen: boolean, title?: string, message: string, type: 'error' | 'success' | 'info' }>({ isOpen: false, message: '', type: 'info' });
@@ -57,6 +63,9 @@ export default function StaffPage() {
         email: staffMember.email,
         password: '', // Empty password for edit means no change
         role: staffMember.role,
+        avatarUrl: staffMember.avatarUrl || '',
+        joiningDate: staffMember.joiningDate ? staffMember.joiningDate.split('T')[0] : '',
+        endingDate: staffMember.endingDate ? staffMember.endingDate.split('T')[0] : '',
       });
     } else {
       setEditingStaff(null);
@@ -65,9 +74,37 @@ export default function StaffPage() {
         email: '',
         password: '',
         role: 'FRONT_DESK',
+        avatarUrl: '',
+        joiningDate: '',
+        endingDate: '',
       });
     }
     setIsModalOpen(true);
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const file = e.target.files[0];
+    const formDataPayload = new FormData();
+    formDataPayload.append('file', file); // Multer usually expects 'file'
+
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/upload/avatar`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: formDataPayload
+      });
+      const data = await response.json();
+      if (data.url) {
+        setFormData({ ...formData, avatarUrl: data.url });
+      } else {
+        setAlertConfig({ isOpen: true, title: 'Upload Failed', message: 'Invalid response from server.', type: 'error' });
+      }
+    } catch (err) {
+      setAlertConfig({ isOpen: true, title: 'Upload Failed', message: 'Could not upload avatar.', type: 'error' });
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -82,6 +119,9 @@ export default function StaffPage() {
           email: formData.email,
           role: formData.role,
         };
+        if (formData.avatarUrl) payload.avatarUrl = formData.avatarUrl;
+        if (formData.joiningDate) payload.joiningDate = new Date(formData.joiningDate).toISOString();
+        if (formData.endingDate) payload.endingDate = new Date(formData.endingDate).toISOString();
         if (formData.password) {
           if (formData.password.length < 6) {
             setAlertConfig({ isOpen: true, title: 'Validation Error', message: 'Password must be at least 6 characters long.', type: 'error' });
@@ -122,9 +162,16 @@ export default function StaffPage() {
           setIsSubmitting(false);
           return;
         }
+        const createPayload: any = { ...formData };
+        if (createPayload.joiningDate) createPayload.joiningDate = new Date(createPayload.joiningDate).toISOString();
+        else delete createPayload.joiningDate;
+        if (createPayload.endingDate) createPayload.endingDate = new Date(createPayload.endingDate).toISOString();
+        else delete createPayload.endingDate;
+        if (!createPayload.avatarUrl) delete createPayload.avatarUrl;
+
         const promise = apiFetch('/staff', {
           method: 'POST',
-          body: JSON.stringify(formData),
+          body: JSON.stringify(createPayload),
         });
 
         await mutate(async (currentData: any) => {
@@ -219,8 +266,10 @@ export default function StaffPage() {
                 <div key={s.id} className="p-4 flex flex-col space-y-3">
                   <div className="flex justify-between items-start">
                     <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 shrink-0 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
-                        {s.role === 'OWNER' ? <Shield className="w-5 h-5" /> : <User className="w-5 h-5" />}
+                      <div className="h-10 w-10 shrink-0 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 overflow-hidden">
+                        {s.avatarUrl ? (
+                           <img src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}${s.avatarUrl}`} alt="Avatar" className="h-full w-full object-cover" />
+                        ) : s.role === 'OWNER' ? <Shield className="w-5 h-5" /> : <User className="w-5 h-5" />}
                       </div>
                       <div className="flex flex-col">
                         <span className="font-bold text-slate-900">{s.name}</span>
@@ -278,8 +327,10 @@ export default function StaffPage() {
                     <tr key={s.id} className="hover:bg-slate-50/50 transition-colors">
                       <td className="px-6 py-4 font-medium text-slate-800">
                         <div className="flex items-center gap-3">
-                          <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
-                            {s.role === 'OWNER' ? <Shield className="w-4 h-4" /> : <User className="w-4 h-4" />}
+                          <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 overflow-hidden">
+                            {s.avatarUrl ? (
+                               <img src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}${s.avatarUrl}`} alt="Avatar" className="h-full w-full object-cover" />
+                            ) : s.role === 'OWNER' ? <Shield className="w-4 h-4" /> : <User className="w-4 h-4" />}
                           </div>
                           {s.name}
                         </div>
@@ -334,6 +385,24 @@ export default function StaffPage() {
             </div>
             
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              <div className="flex items-center space-x-4 mb-4">
+                <div className="relative h-16 w-16 rounded-full bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center">
+                  {formData.avatarUrl ? (
+                    <img src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}${formData.avatarUrl}`} alt="Avatar" className="h-full w-full object-cover" />
+                  ) : (
+                    <User className="h-8 w-8 text-slate-400" />
+                  )}
+                  <label className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 cursor-pointer transition-opacity">
+                    <Camera className="h-5 w-5 text-white" />
+                    <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
+                  </label>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700">Profile Picture</label>
+                  <p className="text-xs text-slate-500">Click the avatar to upload an image.</p>
+                </div>
+              </div>
+
               <div>
                 <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">Full Name</label>
                 <Input
@@ -353,6 +422,25 @@ export default function StaffPage() {
                   value={formData.email}
                   onChange={e => setFormData({ ...formData, email: e.target.value })}
                 />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">Joining Date</label>
+                  <Input
+                    type="date"
+                    value={formData.joiningDate}
+                    onChange={e => setFormData({ ...formData, joiningDate: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">Ending Date</label>
+                  <Input
+                    type="date"
+                    value={formData.endingDate}
+                    onChange={e => setFormData({ ...formData, endingDate: e.target.value })}
+                  />
+                </div>
               </div>
 
               <div>

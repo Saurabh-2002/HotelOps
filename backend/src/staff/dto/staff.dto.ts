@@ -1,4 +1,4 @@
-import { IsString, IsEmail, IsEnum, IsOptional, MinLength } from 'class-validator';
+import { IsString, IsEmail, IsEnum, IsOptional, MinLength, IsDateString, IsUrl } from 'class-validator';
 import { UserRole } from '@prisma/client';
 
 export class CreateStaffDto {
@@ -14,6 +14,18 @@ export class CreateStaffDto {
 
   @IsEnum(UserRole)
   role: UserRole;
+
+  @IsOptional()
+  @IsString()
+  avatarUrl?: string;
+
+  @IsOptional()
+  @IsDateString()
+  joiningDate?: string;
+
+  @IsOptional()
+  @IsDateString()
+  endingDate?: string;
 }
 
 export class UpdateStaffDto {
@@ -33,4 +45,16 @@ export class UpdateStaffDto {
   @IsOptional()
   @IsEnum(UserRole)
   role?: UserRole;
+
+  @IsOptional()
+  @IsString()
+  avatarUrl?: string;
+
+  @IsOptional()
+  @IsDateString()
+  joiningDate?: string;
+
+  @IsOptional()
+  @IsDateString()
+  endingDate?: string;
 }

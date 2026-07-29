@@ -50,6 +50,9 @@ export class StaffService {
           email: dto.email,
           hashedPassword,
           role: dto.role,
+          avatarUrl: dto.avatarUrl,
+          joiningDate: dto.joiningDate ? new Date(dto.joiningDate) : null,
+          endingDate: dto.endingDate ? new Date(dto.endingDate) : null,
         },
       });
     });
@@ -99,6 +102,9 @@ export class StaffService {
     if (dto.name) updateData.name = dto.name;
     if (dto.email) updateData.email = dto.email;
     if (dto.role) updateData.role = dto.role;
+    if (dto.avatarUrl !== undefined) updateData.avatarUrl = dto.avatarUrl;
+    if (dto.joiningDate !== undefined) updateData.joiningDate = dto.joiningDate ? new Date(dto.joiningDate) : null;
+    if (dto.endingDate !== undefined) updateData.endingDate = dto.endingDate ? new Date(dto.endingDate) : null;
 
     if (dto.password) {
       const saltRounds = 10;
