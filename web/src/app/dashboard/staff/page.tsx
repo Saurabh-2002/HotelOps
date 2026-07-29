@@ -12,6 +12,7 @@ import { Select } from '@/components/ui/select';
 import AlertDialog from '@/components/AlertDialog';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import { TableSkeleton } from '@/components/Skeletons';
+import ImageCropper from '@/components/ImageCropper';
 
 type StaffMember = {
   id: string;
@@ -22,6 +23,13 @@ type StaffMember = {
   joiningDate?: string;
   endingDate?: string;
   createdAt: string;
+};
+
+const getAvatarUrl = (path?: string) => {
+  if (!path) return '';
+  if (path.startsWith('http')) return path;
+  const baseUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(/\/api$/, '');
+  return `${baseUrl}${path}`;
 };
 
 const AVAILABLE_ROLES = [
@@ -54,6 +62,7 @@ export default function StaffPage() {
 
   const [alertConfig, setAlertConfig] = useState<{ isOpen: boolean, title?: string, message: string, type: 'error' | 'success' | 'info' }>({ isOpen: false, message: '', type: 'info' });
   const [confirmConfig, setConfirmConfig] = useState<{ isOpen: boolean, title: string, message: string, action?: string, id?: string }>({ isOpen: false, title: '', message: '' });
+  const [selectedImageForCrop, setSelectedImageForCrop] = useState<string | null>(null);
 
   const handleOpenModal = (staffMember?: StaffMember) => {
     if (staffMember) {
@@ -82,11 +91,18 @@ export default function StaffPage() {
     setIsModalOpen(true);
   };
 
-  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || e.target.files.length === 0) return;
-    const file = e.target.files[0];
+  const handleAvatarSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      const imageUrl = URL.createObjectURL(file);
+      setSelectedImageForCrop(imageUrl);
+      e.target.value = ''; // reset input
+    }
+  };
+
+  const handleCropComplete = async (croppedFile: File) => {
     const formDataPayload = new FormData();
-    formDataPayload.append('file', file); // Multer usually expects 'file'
+    formDataPayload.append('file', croppedFile); // Multer usually expects 'file'
 
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/upload/avatar`, {
@@ -104,6 +120,8 @@ export default function StaffPage() {
       }
     } catch (err) {
       setAlertConfig({ isOpen: true, title: 'Upload Failed', message: 'Could not upload avatar.', type: 'error' });
+    } finally {
+      setSelectedImageForCrop(null);
     }
   };
 
@@ -268,7 +286,7 @@ export default function StaffPage() {
                     <div className="flex items-center gap-3">
                       <div className="h-10 w-10 shrink-0 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 overflow-hidden">
                         {s.avatarUrl ? (
-                           <img src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}${s.avatarUrl}`} alt="Avatar" className="h-full w-full object-cover" />
+                           <img src={getAvatarUrl(s.avatarUrl)} alt="Avatar" className="h-full w-full object-cover" />
                         ) : s.role === 'OWNER' ? <Shield className="w-5 h-5" /> : <User className="w-5 h-5" />}
                       </div>
                       <div className="flex flex-col">
@@ -329,7 +347,7 @@ export default function StaffPage() {
                         <div className="flex items-center gap-3">
                           <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 overflow-hidden">
                             {s.avatarUrl ? (
-                               <img src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}${s.avatarUrl}`} alt="Avatar" className="h-full w-full object-cover" />
+                               <img src={getAvatarUrl(s.avatarUrl)} alt="Avatar" className="h-full w-full object-cover" />
                             ) : s.role === 'OWNER' ? <Shield className="w-4 h-4" /> : <User className="w-4 h-4" />}
                           </div>
                           {s.name}
@@ -388,13 +406,13 @@ export default function StaffPage() {
               <div className="flex items-center space-x-4 mb-4">
                 <div className="relative h-16 w-16 rounded-full bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center">
                   {formData.avatarUrl ? (
-                    <img src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}${formData.avatarUrl}`} alt="Avatar" className="h-full w-full object-cover" />
+                    <img src={getAvatarUrl(formData.avatarUrl)} alt="Avatar" className="h-full w-full object-cover" />
                   ) : (
                     <User className="h-8 w-8 text-slate-400" />
                   )}
                   <label className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 cursor-pointer transition-opacity">
                     <Camera className="h-5 w-5 text-white" />
-                    <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
+                    <input type="file" accept="image/*" className="hidden" onChange={handleAvatarSelect} />
                   </label>
                 </div>
                 <div>
@@ -500,6 +518,13 @@ export default function StaffPage() {
         onConfirm={confirmAction}
         onCancel={() => setConfirmConfig({ ...confirmConfig, isOpen: false })}
       />
+      {selectedImageForCrop && (
+        <ImageCropper
+          imageSrc={selectedImageForCrop}
+          onCropComplete={handleCropComplete}
+          onCancel={() => setSelectedImageForCrop(null)}
+        />
+      )}
     </div>
   );
 }
