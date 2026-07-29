@@ -21,6 +21,7 @@ type StaffMember = {
 };
 
 const AVAILABLE_ROLES = [
+  { label: 'Owner', value: 'OWNER' },
   { label: 'Manager', value: 'MANAGER' },
   { label: 'Front Desk', value: 'FRONT_DESK' },
   { label: 'Housekeeping', value: 'HOUSEKEEPING' },
@@ -53,7 +54,7 @@ export default function StaffPage() {
         name: staffMember.name,
         email: staffMember.email,
         password: '', // Empty password for edit means no change
-        role: staffMember.role === 'OWNER' ? 'MANAGER' : staffMember.role,
+        role: staffMember.role,
       });
     } else {
       setEditingStaff(null);
