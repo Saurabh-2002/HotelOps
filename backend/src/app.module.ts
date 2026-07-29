@@ -13,6 +13,7 @@ import { PropertySettingsModule } from './property-settings/property-settings.mo
 import { RoomTypesModule } from './room-types/room-types.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { StaffModule } from './staff/staff.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     PropertySettingsModule,
     RoomTypesModule,
     AnalyticsModule,
+    StaffModule,
   ],
   controllers: [AppController],
   providers: [AppService],

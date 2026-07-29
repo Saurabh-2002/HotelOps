@@ -4,7 +4,7 @@ import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState, useEffect, useRef } from 'react';
-import { LayoutDashboard, BedDouble, CalendarDays, ReceiptText, LogOut, UtensilsCrossed, Menu, X, Settings } from 'lucide-react';
+import { LayoutDashboard, BedDouble, CalendarDays, ReceiptText, LogOut, UtensilsCrossed, Menu, X, Settings, Users, LayoutGrid } from 'lucide-react';
 import { LayoutSkeleton } from '@/components/Skeletons';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -40,13 +40,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       { name: 'Overview', href: '/dashboard', icon: LayoutDashboard },
       ...(user.activeModules?.includes('HOTEL') ? [
         { name: 'Rooms', href: '/dashboard/rooms', icon: BedDouble },
-        { name: 'Room Types', href: '/dashboard/room-types', icon: BedDouble },
+        { name: 'Room Types', href: '/dashboard/room-types', icon: LayoutGrid },
         { name: 'Bookings', href: '/dashboard/bookings', icon: CalendarDays },
       ] : []),
       ...(user.activeModules?.includes('RESTAURANT') ? [
         { name: 'Restaurant POS', href: '/dashboard/pos', icon: UtensilsCrossed },
       ] : []),
       { name: 'Billing', href: '/dashboard/billing', icon: ReceiptText },
+      ...(user.role === 'OWNER' || user.role === 'MANAGER' ? [
+        { name: 'Staff', href: '/dashboard/staff', icon: Users },
+      ] : []),
       { name: 'Settings', href: '/dashboard/settings', icon: Settings },
     ];
 
