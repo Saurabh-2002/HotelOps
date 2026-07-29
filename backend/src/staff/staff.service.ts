@@ -9,7 +9,7 @@ export class StaffService {
   constructor(private readonly prisma: PrismaService) {}
 
   async findAll(tenantId: string) {
-    const users = await this.prisma.withTenant(tenantId, async (tx) => {
+    const users = await this.prisma.withBypassRls(async (tx) => {
       return tx.user.findMany({
         where: { tenantId },
         orderBy: { createdAt: 'desc' },
@@ -42,7 +42,7 @@ export class StaffService {
     const hashedPassword = await bcrypt.hash(dto.password, saltRounds);
 
     // 4. Create user
-    const user = await this.prisma.withTenant(tenantId, async (tx) => {
+    const user = await this.prisma.withBypassRls(async (tx) => {
       return tx.user.create({
         data: {
           tenantId,
@@ -60,7 +60,7 @@ export class StaffService {
 
   async update(tenantId: string, id: string, currentUserRole: string, dto: UpdateStaffDto) {
     // 1. Fetch user to ensure it exists and belongs to tenant
-    const targetUser = await this.prisma.withTenant(tenantId, async (tx) => {
+    const targetUser = await this.prisma.withBypassRls(async (tx) => {
       return tx.user.findFirst({
         where: { id, tenantId },
       });
@@ -102,7 +102,7 @@ export class StaffService {
       updateData.hashedPassword = await bcrypt.hash(dto.password, saltRounds);
     }
 
-    const updatedUser = await this.prisma.withTenant(tenantId, async (tx) => {
+    const updatedUser = await this.prisma.withBypassRls(async (tx) => {
       return tx.user.update({
         where: { id },
         data: updateData,
@@ -118,7 +118,7 @@ export class StaffService {
       throw new ForbiddenException('Cannot delete your own account. Contact an administrator.');
     }
 
-    const targetUser = await this.prisma.withTenant(tenantId, async (tx) => {
+    const targetUser = await this.prisma.withBypassRls(async (tx) => {
       return tx.user.findFirst({
         where: { id, tenantId },
       });
@@ -132,7 +132,7 @@ export class StaffService {
       throw new ForbiddenException('Managers cannot delete Owner accounts');
     }
 
-    await this.prisma.withTenant(tenantId, async (tx) => {
+    await this.prisma.withBypassRls(async (tx) => {
       await tx.user.delete({
         where: { id },
       });

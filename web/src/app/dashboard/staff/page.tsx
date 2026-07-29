@@ -93,7 +93,7 @@ export default function StaffPage() {
           body: JSON.stringify(payload),
         });
 
-        mutate(async (currentData: any) => {
+        await mutate(async (currentData: any) => {
           await promise;
           return currentData.map((s: StaffMember) => s.id === editingStaff.id ? { ...s, ...payload } : s);
         }, {
@@ -115,7 +115,7 @@ export default function StaffPage() {
           body: JSON.stringify(formData),
         });
 
-        mutate(async (currentData: any) => {
+        await mutate(async (currentData: any) => {
           await promise;
           return currentData; // Let revalidate fetch the new list to get the real ID
         }, {
@@ -150,7 +150,7 @@ export default function StaffPage() {
       try {
         const promise = apiFetch(`/staff/${confirmConfig.id}`, { method: 'DELETE' });
 
-        mutate(async (currentData: any) => {
+        await mutate(async (currentData: any) => {
           await promise;
           if (!currentData) return currentData;
           return currentData.filter((s: StaffMember) => s.id !== confirmConfig.id);
