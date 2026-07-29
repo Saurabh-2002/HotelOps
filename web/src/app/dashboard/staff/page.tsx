@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import useSWR from 'swr';
 import { apiFetch, fetcher } from '@/lib/api';
-import { Plus, Pencil, Trash2, Shield, User } from 'lucide-react';
+import { Plus, Pencil, Trash2, Shield, User, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -191,48 +191,98 @@ export default function StaffPage() {
   return (
     <div className="h-full flex flex-col space-y-4">
       {/* Header */}
-      <div className="flex justify-between items-end">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h3 className="text-2xl font-bold text-slate-800">Staff Management</h3>
           <p className="text-slate-500 text-sm mt-1">Manage employee accounts and roles.</p>
         </div>
-        <Button onClick={() => handleOpenModal()}>
+        <Button onClick={() => handleOpenModal()} className="w-full sm:w-auto">
           <Plus className="w-4 h-4 mr-2" />
           Add Staff
         </Button>
       </div>
 
-      {/* Table */}
+      {/* Data View */}
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1">
-        <div className="overflow-x-auto h-full">
-          {isLoading ? (
-            <TableSkeleton rows={4} />
-          ) : (
-            <table className="w-full text-sm text-left">
-              <thead className="text-xs text-slate-500 bg-slate-50/80 uppercase font-semibold border-b border-slate-200 sticky top-0">
-                <tr>
-                  <th className="px-6 py-4">Name</th>
-                  <th className="px-6 py-4">Email</th>
-                  <th className="px-6 py-4">Role</th>
-                  <th className="px-6 py-4">Added On</th>
-                  <th className="px-6 py-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {staff.length === 0 ? (
+        {isLoading ? (
+          <div className="p-4"><TableSkeleton rows={4} /></div>
+        ) : staff.length === 0 ? (
+          <div className="px-6 py-12 text-center text-slate-500">
+            <Users className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+            <p>No staff members found.</p>
+          </div>
+        ) : (
+          <>
+            {/* Mobile Card View (< 640px) */}
+            <div className="sm:hidden flex flex-col divide-y divide-slate-100">
+              {staff.map((s) => (
+                <div key={s.id} className="p-4 flex flex-col space-y-3">
+                  <div className="flex justify-between items-start">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 shrink-0 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+                        {s.role === 'OWNER' ? <Shield className="w-5 h-5" /> : <User className="w-5 h-5" />}
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="font-bold text-slate-900">{s.name}</span>
+                        <span className="text-xs text-slate-500">{s.email}</span>
+                      </div>
+                    </div>
+                    <Badge
+                      variant="secondary"
+                      className={
+                        s.role === 'OWNER' ? 'bg-indigo-100 text-indigo-700 hover:bg-indigo-100' :
+                        s.role === 'MANAGER' ? 'bg-purple-100 text-purple-700 hover:bg-purple-100' :
+                        'bg-slate-100 text-slate-700 hover:bg-slate-100'
+                      }
+                    >
+                      {formatRole(s.role)}
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between items-center pt-2">
+                    <span className="text-xs text-slate-400">
+                      Added on {new Date(s.createdAt).toLocaleDateString()}
+                    </span>
+                    <div className="flex space-x-2">
+                      <Button variant="outline" size="sm" onClick={() => handleOpenModal(s)}>
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-200"
+                        onClick={() => handleDeleteClick(s.id)}
+                        disabled={s.role === 'OWNER'}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop Table View (>= 640px) */}
+            <div className="hidden sm:block overflow-x-auto h-full">
+              <table className="w-full text-sm text-left">
+                <thead className="text-xs text-slate-500 bg-slate-50/80 uppercase font-semibold border-b border-slate-200 sticky top-0">
                   <tr>
-                    <td colSpan={5} className="px-6 py-8 text-center text-slate-500">
-                      No staff members found.
-                    </td>
+                    <th className="px-6 py-4">Name</th>
+                    <th className="px-6 py-4">Email</th>
+                    <th className="px-6 py-4">Role</th>
+                    <th className="px-6 py-4">Added On</th>
+                    <th className="px-6 py-4 text-right">Actions</th>
                   </tr>
-                ) : (
-                  staff.map((s) => (
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {staff.map((s) => (
                     <tr key={s.id} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="px-6 py-4 font-medium text-slate-800 flex items-center gap-3">
-                        <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
-                          {s.role === 'OWNER' ? <Shield className="w-4 h-4" /> : <User className="w-4 h-4" />}
+                      <td className="px-6 py-4 font-medium text-slate-800">
+                        <div className="flex items-center gap-3">
+                          <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+                            {s.role === 'OWNER' ? <Shield className="w-4 h-4" /> : <User className="w-4 h-4" />}
+                          </div>
+                          {s.name}
                         </div>
-                        {s.name}
                       </td>
                       <td className="px-6 py-4 text-slate-600">{s.email}</td>
                       <td className="px-6 py-4">
@@ -259,18 +309,18 @@ export default function StaffPage() {
                           size="sm" 
                           className="text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-200"
                           onClick={() => handleDeleteClick(s.id)}
-                          disabled={s.role === 'OWNER'} // Frontend guard for OWNER deletion
+                          disabled={s.role === 'OWNER'}
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          )}
-        </div>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Add/Edit Modal */}
