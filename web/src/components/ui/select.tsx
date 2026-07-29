@@ -23,6 +23,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
     return (
       <SelectPrimitive.Root 
         value={value?.toString()} 
+        disabled={props.disabled}
         onValueChange={(val) => {
           if (onChange) {
             // Provide a synthetic event to maintain backwards compatibility with existing <select> usages
