@@ -22,7 +22,7 @@ type LeaveRequest = {
   createdAt: string;
 };
 
-export default function LeavePage() {
+export function LeaveTab() {
   const { user } = useAuth();
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -142,10 +142,12 @@ export default function LeavePage() {
           <h3 className="text-2xl font-bold text-slate-800">Leave Management</h3>
           <p className="text-slate-500 text-sm mt-1">Manage staff leave requests.</p>
         </div>
-        <Button onClick={() => setIsModalOpen(true)}>
-          <Plus className="w-4 h-4 mr-2" />
-          Request Leave
-        </Button>
+        {user?.role !== 'OWNER' && (
+          <Button onClick={() => setIsModalOpen(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            Request Leave
+          </Button>
+        )}
       </div>
 
       {error && (

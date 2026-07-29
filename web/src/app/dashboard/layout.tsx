@@ -56,9 +56,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         { name: 'Restaurant POS', href: '/dashboard/pos', icon: UtensilsCrossed },
       ] : []),
       { name: 'Billing', href: '/dashboard/billing', icon: ReceiptText },
-      { name: 'Staff Management', href: '/dashboard/staff', icon: Users },
-      { name: 'Attendance', href: '/dashboard/staff/attendance', icon: ClipboardCheck },
-      { name: 'Leave Requests', href: '/dashboard/staff/leave', icon: CalendarOff },
+      { name: 'Staff', href: '/dashboard/staff', icon: Users },
       { name: 'Settings', href: '/dashboard/settings', icon: Settings },
     ];
 

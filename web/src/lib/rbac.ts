@@ -7,22 +7,20 @@ export const ROLE_ACCESS = {
     '/dashboard/bookings',
     '/dashboard/pos',
     '/dashboard/billing',
-    '/dashboard/staff/leave',
+    '/dashboard/staff',
   ],
   HOUSEKEEPING: [
     '/dashboard/rooms',
-    '/dashboard/staff/leave',
+    '/dashboard/staff',
   ],
   RESTAURANT: [
     '/dashboard/pos',
-    '/dashboard/staff/leave',
+    '/dashboard/staff',
   ],
   ACCOUNTANT: [
     '/dashboard',
     '/dashboard/billing',
-    '/dashboard/staff', // Can view staff list and details for payroll
-    '/dashboard/staff/attendance',
-    '/dashboard/staff/leave',
+    '/dashboard/staff',
     '/dashboard/settings',
   ],
 };

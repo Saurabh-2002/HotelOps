@@ -24,7 +24,7 @@ type AttendanceRecord = {
   status: 'PRESENT' | 'ABSENT' | 'HALF_DAY' | 'ON_LEAVE';
 };
 
-export default function AttendancePage() {
+export function AttendanceTab() {
   const [date, setDate] = useState(() => {
     const today = new Date();
     return today.toISOString().split('T')[0];
@@ -36,7 +36,7 @@ export default function AttendancePage() {
   const { data: staffData, error: staffError } = useSWR('/staff', fetcher);
   const { data: attendanceData, error: attendanceError, mutate: mutateAttendance } = useSWR(`/attendance?date=${date}`, fetcher);
 
-  const staff: StaffMember[] = staffData || [];
+  const staff: StaffMember[] = staffData ? staffData.filter((s: StaffMember) => s.role !== 'OWNER') : [];
   const attendanceRecords: AttendanceRecord[] = attendanceData || [];
   const isLoading = (!staffData && !staffError) || (!attendanceData && !attendanceError);
 
