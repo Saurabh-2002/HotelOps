@@ -30,15 +30,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return () => { document.body.style.overflow = ''; };
   }, [isMobileMenuOpen]);
 
-  if (isLoading) {
-    return <LayoutSkeleton />;
-  }
-
-  if (!user) {
-    return null; // AuthContext will redirect to login
-  }
-
-  // Route Guard
+  // Route Guard — must be called before any early returns to satisfy Rules of Hooks
   useEffect(() => {
     if (user) {
       if (!user.role) {
@@ -50,6 +42,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       }
     }
   }, [user, pathname, router, logout]);
+
+  if (isLoading) {
+    return <LayoutSkeleton />;
+  }
+
+  if (!user) {
+    return null; // AuthContext will redirect to login
+  }
 
     const allNavItems = [
       { name: 'Overview', href: '/dashboard', icon: LayoutDashboard },
