@@ -28,23 +28,26 @@ export const ROLE_ACCESS = {
 };
 
 export const hasAccess = (role: string, pathname: string): boolean => {
-  const allowed = ROLE_ACCESS[role as keyof typeof ROLE_ACCESS];
+  if (!role) return false;
+  const normalizedRole = role.toUpperCase();
+  const allowed = ROLE_ACCESS[normalizedRole as keyof typeof ROLE_ACCESS];
   if (!allowed) return false;
   if (allowed.includes('*')) return true;
 
-  // We check if the pathname exactly matches or is a child of the allowed route
-  // e.g. /dashboard/rooms/123 is allowed if /dashboard/rooms is in the list
-  // However, /dashboard should not allow /dashboard/settings if not explicitly listed.
-  
+  // Exact match
+  if (allowed.includes(pathname)) return true;
+
+  // Prefix match (only for routes that have subroutes, but we want to prevent '/dashboard' from allowing '/dashboard/settings')
   return allowed.some((route) => {
-    if (pathname === route) return true;
-    if (pathname.startsWith(`${route}/`)) return true;
-    return false;
+    if (route === '/dashboard') return false; // Already handled by exact match above
+    return pathname.startsWith(`${route}/`);
   });
 };
 
 export const getDefaultRoute = (role: string): string => {
-  switch (role) {
+  if (!role) return '/dashboard';
+  const normalizedRole = role.toUpperCase();
+  switch (normalizedRole) {
     case 'OWNER':
     case 'MANAGER':
     case 'FRONT_DESK':
