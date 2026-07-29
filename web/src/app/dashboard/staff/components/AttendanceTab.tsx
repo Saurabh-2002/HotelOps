@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import useSWR from 'swr';
 import { useAuth } from '@/context/AuthContext';
 import { apiFetch, fetcher } from '@/lib/api';
-import { Loader2, Users, Calendar, CheckCircle2, XCircle } from 'lucide-react';
+import { Loader2, Users, Calendar, CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { TableSkeleton } from '@/components/Skeletons';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,6 +23,8 @@ type AttendanceRecord = {
   userId: string;
   date: string;
   status: 'PRESENT' | 'ABSENT' | 'HALF_DAY' | 'ON_LEAVE';
+  checkInTime?: string;
+  checkOutTime?: string;
 };
 
 export function AttendanceTab() {
@@ -36,20 +38,50 @@ export function AttendanceTab() {
   
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [editingMember, setEditingMember] = useState<StaffMember | null>(null);
+  
+  const [editForm, setEditForm] = useState<{status: string, checkInTime: string, checkOutTime: string}>({
+    status: '', checkInTime: '', checkOutTime: ''
+  });
 
   const { data: staffData, error: staffError } = useSWR('/staff', fetcher);
   const { data: attendanceData, error: attendanceError, mutate: mutateAttendance } = useSWR(`/attendance?date=${date}`, fetcher);
 
   const staff: StaffMember[] = staffData ? staffData.filter((s: StaffMember) => s.role !== 'OWNER') : [];
-  const attendanceRecords: AttendanceRecord[] = attendanceData || [];
+  const attendanceRecords: AttendanceRecord[] = Array.isArray(attendanceData) ? attendanceData : [];
   const isLoading = (!staffData && !staffError) || (!attendanceData && !attendanceError);
 
-  const handleStatusChange = async (userId: string, status: string) => {
+  const openEditModal = (member: StaffMember) => {
+    const record = attendanceRecords.find(r => r.userId === member.id);
+    setEditingMember(member);
+    setEditForm({
+      status: record?.status || 'PRESENT',
+      checkInTime: record?.checkInTime ? new Date(record.checkInTime).toISOString().slice(0,16) : '',
+      checkOutTime: record?.checkOutTime ? new Date(record.checkOutTime).toISOString().slice(0,16) : ''
+    });
+  };
+
+  const closeEditModal = () => {
+    setEditingMember(null);
+  };
+
+  const handleUpdate = async () => {
+    if (!editingMember) return;
     setError('');
     setSuccess('');
+    setIsUpdating(true);
     
     try {
-      const payload = { userId, date, status };
+      const payload: any = { 
+        userId: editingMember.id, 
+        date, 
+        status: editForm.status 
+      };
+      
+      if (editForm.checkInTime) payload.checkInTime = new Date(editForm.checkInTime).toISOString();
+      if (editForm.checkOutTime) payload.checkOutTime = new Date(editForm.checkOutTime).toISOString();
+      
       const promise = apiFetch('/attendance', {
         method: 'POST',
         body: JSON.stringify(payload)
@@ -57,18 +89,18 @@ export function AttendanceTab() {
       
       mutateAttendance(async (currentData: any) => {
         const updatedRecord = await promise;
-        const current = currentData || [];
-        const exists = current.find((r: AttendanceRecord) => r.userId === userId);
+        const current = Array.isArray(currentData) ? currentData : [];
+        const exists = current.find((r: AttendanceRecord) => r.userId === editingMember.id);
         if (exists) {
-          return current.map((r: AttendanceRecord) => r.userId === userId ? updatedRecord : r);
+          return current.map((r: AttendanceRecord) => r.userId === editingMember.id ? updatedRecord : r);
         }
         return [...current, updatedRecord];
       }, {
         optimisticData: (currentData: any) => {
-          const current = currentData || [];
-          const exists = current.find((r: AttendanceRecord) => r.userId === userId);
+          const current = Array.isArray(currentData) ? currentData : [];
+          const exists = current.find((r: AttendanceRecord) => r.userId === editingMember.id);
           if (exists) {
-            return current.map((r: AttendanceRecord) => r.userId === userId ? { ...r, status } : r);
+            return current.map((r: AttendanceRecord) => r.userId === editingMember.id ? { ...r, ...payload } : r);
           }
           return [...current, payload];
         },
@@ -77,8 +109,11 @@ export function AttendanceTab() {
       });
       
       setSuccess('Attendance updated successfully');
+      closeEditModal();
     } catch (err: any) {
       setError(err.message || 'Failed to update attendance');
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -89,13 +124,15 @@ export function AttendanceTab() {
     }
   }, [success]);
 
-  const getAttendanceStatus = (userId: string) => {
-    const record = attendanceRecords.find(r => r.userId === userId);
-    return record?.status || '';
-  };
+  const getRecord = (userId: string) => attendanceRecords.find(r => r.userId === userId);
 
   const formatRole = (role: string) => {
     return role.split('_').map(w => w.charAt(0) + w.slice(1).toLowerCase()).join(' ');
+  };
+
+  const formatTime = (isoString?: string) => {
+    if (!isoString) return '-';
+    return new Date(isoString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   return (
@@ -145,33 +182,45 @@ export function AttendanceTab() {
             <>
               {/* Mobile Card View (< 640px) */}
               <div className="sm:hidden flex flex-col divide-y divide-slate-100">
-                {staff.map((member) => (
-                  <div key={member.id} className="p-4 flex flex-col space-y-3">
-                    <div className="flex justify-between items-start">
-                      <div className="flex flex-col">
-                        <span className="font-bold text-slate-900 text-lg">{member.name}</span>
-                        <span className="text-xs text-slate-500 mt-0.5">{member.email}</span>
+                {staff.map((member) => {
+                  const record = getRecord(member.id);
+                  return (
+                    <div key={member.id} className="p-4 flex flex-col space-y-3">
+                      <div className="flex justify-between items-start">
+                        <div className="flex flex-col">
+                          <span className="font-bold text-slate-900 text-lg">{member.name}</span>
+                          <span className="text-xs text-slate-500 mt-0.5">{member.email}</span>
+                        </div>
+                        <Badge variant="secondary" className="bg-slate-100 text-slate-700">
+                          {formatRole(member.role)}
+                        </Badge>
                       </div>
-                      <Badge variant="secondary" className="bg-slate-100 text-slate-700">
-                        {formatRole(member.role)}
-                      </Badge>
+                      
+                      <div className="grid grid-cols-2 gap-2 text-sm bg-slate-50 p-3 rounded-lg border border-slate-100">
+                        <div>
+                          <p className="text-slate-400 text-xs uppercase font-medium">Status</p>
+                          <p className="font-medium text-slate-700">{record?.status || 'NOT MARKED'}</p>
+                        </div>
+                        <div>
+                          <p className="text-slate-400 text-xs uppercase font-medium">In - Out</p>
+                          <p className="text-slate-700">{formatTime(record?.checkInTime)} - {formatTime(record?.checkOutTime)}</p>
+                        </div>
+                      </div>
+
+                      {isManager && (
+                        <div className="pt-2">
+                          <Button 
+                            onClick={() => openEditModal(member)}
+                            className="w-full"
+                            variant="outline"
+                          >
+                            Update
+                          </Button>
+                        </div>
+                      )}
                     </div>
-                    <div className="pt-2">
-                      <Select
-                        className="w-full bg-white shadow-sm"
-                        value={getAttendanceStatus(member.id)}
-                        onChange={(e: any) => handleStatusChange(member.id, e.target.value)}
-                        placeholder="Mark Attendance"
-                      >
-                        <option value="" disabled>Select Status</option>
-                        <option value="PRESENT">Present</option>
-                        <option value="ABSENT">Absent</option>
-                        <option value="HALF_DAY">Half Day</option>
-                        <option value="ON_LEAVE">On Leave</option>
-                      </Select>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* Desktop Table View (>= 640px) */}
@@ -180,46 +229,138 @@ export function AttendanceTab() {
                   <thead className="bg-slate-50 text-slate-700 text-xs uppercase font-semibold border-b border-slate-200 whitespace-nowrap">
                     <tr>
                       <th className="px-6 py-4">Name</th>
-                      <th className="px-6 py-4">Email</th>
                       <th className="px-6 py-4">Role</th>
-                      <th className="px-6 py-4 text-right">Status</th>
+                      <th className="px-6 py-4">Status</th>
+                      <th className="px-6 py-4">Check In</th>
+                      <th className="px-6 py-4">Check Out</th>
+                      {isManager && <th className="px-6 py-4 text-right">Action</th>}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {staff.map((member) => (
-                      <tr key={member.id} className="hover:bg-slate-50 transition-colors">
-                        <td className="px-6 py-4 font-medium text-slate-900">
-                          {member.name}
-                        </td>
-                        <td className="px-6 py-4 text-slate-500">
-                          {member.email}
-                        </td>
-                        <td className="px-6 py-4">
-                          <Badge variant="secondary" className="bg-slate-100 text-slate-700">
-                            {formatRole(member.role)}
-                          </Badge>
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <Select
-                            className="w-40 ml-auto bg-white shadow-sm"
-                            value={getAttendanceStatus(member.id)}
-                            onChange={(e: any) => handleStatusChange(member.id, e.target.value)}
-                            placeholder="Mark..."
-                          >
-                            <option value="" disabled>Mark...</option>
-                            <option value="PRESENT">Present</option>
-                            <option value="ABSENT">Absent</option>
-                            <option value="HALF_DAY">Half Day</option>
-                            <option value="ON_LEAVE">On Leave</option>
-                          </Select>
-                        </td>
-                      </tr>
-                    ))}
+                    {staff.map((member) => {
+                      const record = getRecord(member.id);
+                      return (
+                        <tr key={member.id} className="hover:bg-slate-50 transition-colors">
+                          <td className="px-6 py-4">
+                            <p className="font-medium text-slate-900">{member.name}</p>
+                            <p className="text-xs text-slate-500">{member.email}</p>
+                          </td>
+                          <td className="px-6 py-4">
+                            <Badge variant="secondary" className="bg-slate-100 text-slate-700">
+                              {formatRole(member.role)}
+                            </Badge>
+                          </td>
+                          <td className="px-6 py-4 font-medium">
+                            {record?.status ? (
+                              <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                {record.status}
+                              </Badge>
+                            ) : (
+                              <span className="text-slate-400 italic">Not Marked</span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center text-slate-700">
+                              <Clock className="w-3.5 h-3.5 mr-1.5 text-slate-400" />
+                              {formatTime(record?.checkInTime)}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center text-slate-700">
+                              <Clock className="w-3.5 h-3.5 mr-1.5 text-slate-400" />
+                              {formatTime(record?.checkOutTime)}
+                            </div>
+                          </td>
+                          {isManager && (
+                            <td className="px-6 py-4 text-right">
+                              <Button 
+                                onClick={() => openEditModal(member)}
+                                size="sm" 
+                                variant="outline"
+                              >
+                                Update
+                              </Button>
+                            </td>
+                          )}
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
             </>
           )}
+        </div>
+      )}
+
+      {/* Edit Modal Overlay */}
+      {editingMember && (
+        <div className="fixed inset-0 z-[99] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95">
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+              <h3 className="text-lg font-bold text-slate-900">Update Attendance</h3>
+              <button 
+                onClick={closeEditModal}
+                className="text-slate-400 hover:text-slate-500 transition-colors"
+              >
+                <XCircle className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <div>
+                <p className="text-sm font-medium text-slate-700 mb-1">Staff Member</p>
+                <p className="text-slate-900 font-semibold">{editingMember.name}</p>
+                <p className="text-slate-500 text-sm">{formatRole(editingMember.role)}</p>
+              </div>
+              
+              <div className="space-y-3">
+                <div>
+                  <label className="text-sm font-medium text-slate-700 mb-1 block">Status</label>
+                  <Select
+                    className="w-full"
+                    value={editForm.status}
+                    onChange={(e: any) => setEditForm(prev => ({ ...prev, status: e.target.value }))}
+                  >
+                    <option value="" disabled>Select Status</option>
+                    <option value="PRESENT">Present</option>
+                    <option value="ABSENT">Absent</option>
+                    <option value="HALF_DAY">Half Day</option>
+                    <option value="ON_LEAVE">On Leave</option>
+                  </Select>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-slate-700 mb-1 block">Check In</label>
+                    <Input 
+                      type="datetime-local" 
+                      value={editForm.checkInTime}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, checkInTime: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-slate-700 mb-1 block">Check Out</label>
+                    <Input 
+                      type="datetime-local" 
+                      value={editForm.checkOutTime}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, checkOutTime: e.target.value }))}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+              <Button variant="outline" onClick={closeEditModal} disabled={isUpdating}>
+                Cancel
+              </Button>
+              <Button onClick={handleUpdate} disabled={isUpdating || !editForm.status}>
+                {isUpdating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                Save Changes
+              </Button>
+            </div>
+          </div>
         </div>
       )}
     </div>

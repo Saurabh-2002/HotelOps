@@ -19,11 +19,8 @@ export class AttendanceController {
   }
 
   @Post()
+  @Roles('OWNER', 'MANAGER')
   markAttendance(@Request() req, @Body() dto: MarkAttendanceDto) {
-    const isManager = req.user.role === 'OWNER' || req.user.role === 'MANAGER';
-    if (!isManager && dto.userId !== req.user.id) {
-      throw new BadRequestException('You can only mark your own attendance');
-    }
     return this.attendanceService.markAttendance(req.user.tenantId, dto);
   }
 }

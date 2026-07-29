@@ -34,12 +34,16 @@ export class AttendanceService {
         },
         update: {
           status: dto.status,
+          checkInTime: dto.checkInTime ? new Date(dto.checkInTime) : undefined,
+          checkOutTime: dto.checkOutTime ? new Date(dto.checkOutTime) : undefined,
         },
         create: {
           tenantId,
           userId: dto.userId,
           date,
           status: dto.status,
+          checkInTime: dto.checkInTime ? new Date(dto.checkInTime) : undefined,
+          checkOutTime: dto.checkOutTime ? new Date(dto.checkOutTime) : undefined,
         },
       });
     });
