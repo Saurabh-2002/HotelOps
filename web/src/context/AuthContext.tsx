@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
+import { getDefaultRoute } from '@/lib/rbac';
 
 type User = {
   id: string;
@@ -49,7 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('token', token);
     localStorage.setItem('user', JSON.stringify(userData));
     setUser(userData);
-    router.push('/dashboard');
+    router.push(getDefaultRoute(userData.role));
   };
 
   const logout = () => {

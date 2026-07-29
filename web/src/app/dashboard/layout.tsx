@@ -2,14 +2,16 @@
 
 import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useState, useEffect, useRef } from 'react';
-import { LayoutDashboard, BedDouble, CalendarDays, ReceiptText, LogOut, UtensilsCrossed, Menu, X, Settings, Users, LayoutGrid } from 'lucide-react';
+import { hasAccess, getDefaultRoute } from '@/lib/rbac';
+import { LayoutDashboard, BedDouble, CalendarDays, ReceiptText, LogOut, UtensilsCrossed, Menu, X, Settings, Users, LayoutGrid, ClipboardCheck, CalendarOff } from 'lucide-react';
 import { LayoutSkeleton } from '@/components/Skeletons';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, logout, isLoading } = useAuth();
   const pathname = usePathname();
+  const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const bottomNavRef = useRef<HTMLDivElement>(null);
 
@@ -36,7 +38,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return null; // AuthContext will redirect to login
   }
 
-    const navItems = [
+  // Route Guard
+  useEffect(() => {
+    if (user && !hasAccess(user.role, pathname)) {
+      router.replace(getDefaultRoute(user.role));
+    }
+  }, [user, pathname, router]);
+
+    const allNavItems = [
       { name: 'Overview', href: '/dashboard', icon: LayoutDashboard },
       ...(user.activeModules?.includes('HOTEL') ? [
         { name: 'Rooms', href: '/dashboard/rooms', icon: BedDouble },
@@ -47,11 +56,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         { name: 'Restaurant POS', href: '/dashboard/pos', icon: UtensilsCrossed },
       ] : []),
       { name: 'Billing', href: '/dashboard/billing', icon: ReceiptText },
-      ...(user.role === 'OWNER' || user.role === 'MANAGER' ? [
-        { name: 'Staff', href: '/dashboard/staff', icon: Users },
-      ] : []),
+      { name: 'Staff Management', href: '/dashboard/staff', icon: Users },
+      { name: 'Attendance', href: '/dashboard/staff/attendance', icon: ClipboardCheck },
+      { name: 'Leave Requests', href: '/dashboard/staff/leave', icon: CalendarOff },
       { name: 'Settings', href: '/dashboard/settings', icon: Settings },
     ];
+
+    const navItems = allNavItems.filter(item => hasAccess(user.role, item.href));
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden print:block print:h-auto print:overflow-visible">
