@@ -40,10 +40,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   // Route Guard
   useEffect(() => {
-    if (user && !hasAccess(user.role, pathname)) {
-      router.replace(getDefaultRoute(user.role));
+    if (user) {
+      if (!user.role) {
+        logout();
+        return;
+      }
+      if (!hasAccess(user.role, pathname)) {
+        router.replace(getDefaultRoute(user.role));
+      }
     }
-  }, [user, pathname, router]);
+  }, [user, pathname, router, logout]);
 
     const allNavItems = [
       { name: 'Overview', href: '/dashboard', icon: LayoutDashboard },
