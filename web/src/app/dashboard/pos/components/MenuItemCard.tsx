@@ -1,8 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { UtensilsCrossed, Star, Clock, Plus } from 'lucide-react';
+import { UtensilsCrossed, Star, Clock, Plus, CheckCircle2 } from 'lucide-react';
 
 type MenuItem = {
   id: string;
@@ -32,7 +33,23 @@ interface MenuItemCardProps {
 }
 
 export default function MenuItemCard({ item, onClick }: MenuItemCardProps) {
+  const [isAdded, setIsAdded] = useState(false);
   const hasBadges = item.isBestSeller || item.isChefSpecial || item.isRecommended;
+
+  const handleClick = () => {
+    // Determine if it will open a modal (has customizations) or add directly
+    const hasCustomizations = (item.sizes && item.sizes.length > 0) ||
+      (item.spiceLevels && item.spiceLevels.length > 0) ||
+      (item.extras && item.extras.length > 0) ||
+      (item.comboWith && item.comboWith.length > 0);
+
+    // If it adds directly, show the success animation on the card
+    if (!hasCustomizations && item.isAvailable) {
+      setIsAdded(true);
+      setTimeout(() => setIsAdded(false), 800);
+    }
+    onClick(item);
+  };
 
   // Calculate price display
   const sizePrices = item.sizePricing ? Object.values(item.sizePricing) : [];
@@ -45,12 +62,22 @@ export default function MenuItemCard({ item, onClick }: MenuItemCardProps) {
 
   return (
     <Card
-      className={`p-0 overflow-hidden cursor-pointer group transition-all duration-300
+      className={`relative p-0 overflow-hidden cursor-pointer group transition-all duration-300
         hover:border-blue-200 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-1
         flex flex-col h-full bg-white
-        ${!item.isAvailable ? 'opacity-50 pointer-events-none grayscale-[50%]' : ''}`}
-      onClick={() => onClick(item)}
+        ${!item.isAvailable ? 'opacity-50 pointer-events-none grayscale-[50%]' : ''}
+        ${isAdded ? 'ring-2 ring-green-500 scale-[0.98]' : ''}`}
+      onClick={handleClick}
     >
+      {/* Added to Order Overlay */}
+      <div 
+        className={`absolute inset-0 z-20 flex items-center justify-center bg-green-500/90 backdrop-blur-sm transition-all duration-300 pointer-events-none ${isAdded ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}
+      >
+        <div className={`flex flex-col items-center text-white transform transition-all duration-500 delay-100 ${isAdded ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`}>
+          <CheckCircle2 className="w-12 h-12 mb-2" />
+          <span className="font-bold tracking-wider uppercase text-sm">Added to Order</span>
+        </div>
+      </div>
       {/* Image Area */}
       <div className="relative aspect-[4/3] w-full overflow-hidden bg-slate-50 shrink-0">
         {item.imageUrl ? (
