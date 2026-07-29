@@ -1,36 +1,54 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateFolioDto } from './dto/billing.dto';
+import { CreateFolioDto, CreateMiscChargeDto } from './dto/billing.dto';
 import { InvoiceSnapshotV1 } from './dto/invoice-snapshot.dto';
 
-const GST_RATES = {
-  STANDARD: { cgstRate: 0.06, sgstRate: 0.06 },
-  PREMIUM: { cgstRate: 0.09, sgstRate: 0.09 },
+// Fallback defaults if PropertySettings doesn't have GST config yet
+const DEFAULT_GST = {
+  roomGstStandardRate: 0.12,
+  roomGstPremiumRate: 0.18,
+  roomGstThreshold: 7500,
+  restaurantGstRate: 0.05,
 };
 
 @Injectable()
 export class BillingService {
   constructor(private readonly prisma: PrismaService) {}
 
-  calculateGst(totalAmount: number, dailyRate?: number) {
-    const basis = dailyRate !== undefined ? dailyRate : totalAmount;
-    const rate = basis <= 7500 ? GST_RATES.STANDARD : GST_RATES.PREMIUM;
-    const cgst = Math.round(totalAmount * rate.cgstRate * 100) / 100;
-    const sgst = Math.round(totalAmount * rate.sgstRate * 100) / 100;
-    return { cgst, sgst, total: totalAmount + cgst + sgst };
+  private _getGstConfig(settings: any) {
+    return {
+      roomGstStandardRate: settings?.roomGstStandardRate ? Number(settings.roomGstStandardRate) : DEFAULT_GST.roomGstStandardRate,
+      roomGstPremiumRate: settings?.roomGstPremiumRate ? Number(settings.roomGstPremiumRate) : DEFAULT_GST.roomGstPremiumRate,
+      roomGstThreshold: settings?.roomGstThreshold ? Number(settings.roomGstThreshold) : DEFAULT_GST.roomGstThreshold,
+      restaurantGstRate: settings?.restaurantGstRate ? Number(settings.restaurantGstRate) : DEFAULT_GST.restaurantGstRate,
+    };
+  }
+
+  calculateRoomGst(totalAmount: number, dailyRate: number, gstConfig: ReturnType<typeof this._getGstConfig>) {
+    const totalRate = dailyRate <= gstConfig.roomGstThreshold
+      ? gstConfig.roomGstStandardRate
+      : gstConfig.roomGstPremiumRate;
+    const cgstRate = totalRate / 2;
+    const sgstRate = totalRate / 2;
+    const cgst = Math.round(totalAmount * cgstRate * 100) / 100;
+    const sgst = Math.round(totalAmount * sgstRate * 100) / 100;
+    return { cgst, sgst, totalRate };
   }
 
   // Common dynamic calculation path
-  private _calculateInvoiceViewModel(booking: any): InvoiceSnapshotV1 {
+  private _calculateInvoiceViewModel(booking: any, settings: any, miscChargesData: any[]): InvoiceSnapshotV1 {
+    const gstConfig = this._getGstConfig(settings);
+
     const checkIn = new Date(booking.checkInDate);
     const checkOut = new Date(booking.checkOutDate);
     const nights = Math.max(1, Math.ceil((checkOut.getTime() - checkIn.getTime()) / 86400000));
     const roomRate = Number(booking.room.baseRate);
     const totalRoomCharge = roomRate * nights;
     
-    const roomGst = this.calculateGst(totalRoomCharge, roomRate);
-    const roomGstRate = roomRate <= 7500 ? 0.12 : 0.18;
+    const roomGst = this.calculateRoomGst(totalRoomCharge, roomRate, gstConfig);
+    const roomGstRate = roomGst.totalRate;
 
+    // Restaurant charges
     let totalPosCharge = 0;
     const posOrders = booking.posOrders.map((order: any) => {
       const orderSubtotal = Number(order.totalAmount);
@@ -41,19 +59,51 @@ export class BillingService {
         createdAt: new Date(order.createdAt).toISOString(),
         totalAmount: orderSubtotal,
         items: order.items.map((item: any) => ({
-          menuItem: { name: item.itemName }, // Use transactional name
+          menuItem: { name: item.itemName },
           quantity: item.quantity,
-          unitPrice: Number(item.unitPrice), // Use transactional price
+          unitPrice: Number(item.unitPrice),
         }))
       };
     });
 
-    const posCgst = Math.round(totalPosCharge * 0.025 * 100) / 100;
-    const posSgst = Math.round(totalPosCharge * 0.025 * 100) / 100;
+    // Restaurant GST: for orders posted to a room, use room-tariff-linked rate if room is premium
+    // Per Indian GST law: restaurants in hotels with room tariff > ₹7500 charge 18% GST
+    let posGstRate: number;
+    if (roomRate > gstConfig.roomGstThreshold) {
+      // Premium hotel — restaurant charges attract the same rate as the room
+      posGstRate = gstConfig.roomGstPremiumRate;
+    } else {
+      // Standard hotel — restaurant charges use the flat restaurant GST rate
+      posGstRate = gstConfig.restaurantGstRate;
+    }
+    const posCgst = Math.round(totalPosCharge * (posGstRate / 2) * 100) / 100;
+    const posSgst = Math.round(totalPosCharge * (posGstRate / 2) * 100) / 100;
 
-    const cgst = roomGst.cgst + posCgst;
-    const sgst = roomGst.sgst + posSgst;
-    const grandTotal = totalRoomCharge + totalPosCharge + cgst + sgst;
+    // Miscellaneous charges
+    let totalMiscCharge = 0;
+    let miscCgst = 0;
+    let miscSgst = 0;
+    const miscCharges = miscChargesData.map((mc: any) => {
+      const amount = Number(mc.amount);
+      const gstRate = Number(mc.gstRate);
+      const itemCgst = Math.round(amount * (gstRate / 2) * 100) / 100;
+      const itemSgst = Math.round(amount * (gstRate / 2) * 100) / 100;
+      totalMiscCharge += amount;
+      miscCgst += itemCgst;
+      miscSgst += itemSgst;
+      return {
+        id: mc.id,
+        description: mc.description,
+        amount,
+        gstRate,
+        cgst: itemCgst,
+        sgst: itemSgst,
+      };
+    });
+
+    const cgst = roomGst.cgst + posCgst + miscCgst;
+    const sgst = roomGst.sgst + posSgst + miscSgst;
+    const grandTotal = totalRoomCharge + totalPosCharge + totalMiscCharge + cgst + sgst;
 
     const guest = booking.guestRecords?.[0] || {};
 
@@ -81,8 +131,13 @@ export class BillingService {
       roomTotal: totalRoomCharge + roomGst.cgst + roomGst.sgst,
       posOrders,
       totalPosCharge,
+      posGstRate,
       posCgst,
       posSgst,
+      miscCharges,
+      totalMiscCharge,
+      miscCgst,
+      miscSgst,
       cgst,
       sgst,
       grandTotal,
@@ -162,8 +217,14 @@ export class BillingService {
       });
       if (!booking) throw new NotFoundException('Booking not found');
 
-      const snapshot = this._calculateInvoiceViewModel(booking);
-      snapshot.status = 'SETTLED'; // Technically OPEN logic, but snapshot interface uses SETTLED string
+      // Fetch property settings for GST config
+      const settings = await tx.propertySettings.findUnique({ where: { tenantId } });
+
+      // Fetch misc charges for this booking
+      const miscCharges = await tx.miscCharge.findMany({ where: { bookingId, tenantId } });
+
+      const snapshot = this._calculateInvoiceViewModel(booking, settings, miscCharges);
+      snapshot.status = 'SETTLED';
 
       return {
         folio: {
@@ -214,7 +275,13 @@ export class BillingService {
       });
       if (!booking) throw new NotFoundException('Booking not found');
 
-      const snapshot = this._calculateInvoiceViewModel(booking);
+      // Fetch property settings for GST config
+      const settings = await tx.propertySettings.findUnique({ where: { tenantId } });
+
+      // Fetch misc charges for this booking
+      const miscCharges = await tx.miscCharge.findMany({ where: { bookingId, tenantId } });
+
+      const snapshot = this._calculateInvoiceViewModel(booking, settings, miscCharges);
       const settledAt = new Date();
       snapshot.settledAt = settledAt.toISOString();
 
@@ -247,5 +314,48 @@ export class BillingService {
       }
     });
   }
-}
 
+  // --- Miscellaneous Charges ---
+
+  async addMiscCharge(tenantId: string, dto: CreateMiscChargeDto) {
+    return this.prisma.withTenant(tenantId, async (tx) => {
+      // Verify booking exists and folio is not yet settled
+      const booking = await tx.booking.findFirst({
+        where: { id: dto.bookingId, tenantId },
+      });
+      if (!booking) throw new NotFoundException('Booking not found');
+
+      const existingFolio = await tx.folio.findUnique({ where: { bookingId: dto.bookingId } });
+      if (existingFolio && existingFolio.status === 'SETTLED') {
+        throw new ConflictException('Cannot add charges to a settled folio.');
+      }
+
+      return tx.miscCharge.create({
+        data: {
+          tenantId,
+          bookingId: dto.bookingId,
+          description: dto.description,
+          amount: dto.amount,
+          gstRate: dto.gstRate ?? 0.18,
+        },
+      });
+    });
+  }
+
+  async removeMiscCharge(tenantId: string, chargeId: string) {
+    return this.prisma.withTenant(tenantId, async (tx) => {
+      const charge = await tx.miscCharge.findFirst({
+        where: { id: chargeId, tenantId },
+      });
+      if (!charge) throw new NotFoundException('Miscellaneous charge not found');
+
+      // Verify folio is not settled
+      const existingFolio = await tx.folio.findUnique({ where: { bookingId: charge.bookingId } });
+      if (existingFolio && existingFolio.status === 'SETTLED') {
+        throw new ConflictException('Cannot remove charges from a settled folio.');
+      }
+
+      return tx.miscCharge.delete({ where: { id: chargeId } });
+    });
+  }
+}

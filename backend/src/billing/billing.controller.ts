@@ -1,6 +1,6 @@
-import { Controller, Get, Post, Param, Body, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Param, Body, UseGuards, Request } from '@nestjs/common';
 import { BillingService } from './billing.service';
-import { CreateFolioDto } from './dto/billing.dto';
+import { CreateFolioDto, CreateMiscChargeDto } from './dto/billing.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -36,5 +36,19 @@ export class BillingController {
   @Roles('OWNER', 'MANAGER', 'FRONT_DESK', 'ACCOUNTANT')
   settleFolio(@Request() req: any, @Param('id') id: string) {
     return this.billingService.settleFolio(req.user.tenantId, id);
+  }
+
+  // --- Miscellaneous Charges ---
+
+  @Post('misc-charge')
+  @Roles('OWNER', 'MANAGER', 'FRONT_DESK', 'ACCOUNTANT')
+  addMiscCharge(@Request() req: any, @Body() dto: CreateMiscChargeDto) {
+    return this.billingService.addMiscCharge(req.user.tenantId, dto);
+  }
+
+  @Delete('misc-charge/:id')
+  @Roles('OWNER', 'MANAGER', 'FRONT_DESK', 'ACCOUNTANT')
+  removeMiscCharge(@Request() req: any, @Param('id') id: string) {
+    return this.billingService.removeMiscCharge(req.user.tenantId, id);
   }
 }

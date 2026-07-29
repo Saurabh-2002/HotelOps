@@ -46,3 +46,20 @@ export class SettleFolioDto {
   @IsOptional()
   transactionRef?: string;
 }
+
+export class CreateMiscChargeDto {
+  @IsString()
+  bookingId: string;
+
+  @IsString()
+  description: string;
+
+  @IsNumber()
+  @Type(() => Number)
+  amount: number;
+
+  @IsNumber()
+  @Type(() => Number)
+  @IsOptional()
+  gstRate?: number; // Defaults to 0.18 (18%) if not provided
+}

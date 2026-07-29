@@ -29,20 +29,34 @@ export interface InvoiceSnapshotV1 {
 
   // RESTAURANT FINANCIALS
   posOrders: Array<{
-    id: string; // The frontend expects 'id', not 'orderId'
+    id: string;
     createdAt: string; // ISO 8601
-    totalAmount: number; // Frontend might expect totalAmount instead of subtotal
+    totalAmount: number;
     items: Array<{
-      menuItem: { name: string }; // Frontend expects menuItem.name
+      menuItem: { name: string };
       quantity: number;
       unitPrice: number;
     }>;
   }>;
-
-  // AGGREGATES
   totalPosCharge: number;
+  posGstRate: number; // The actual restaurant GST rate used (e.g. 0.05 or 0.18)
   posCgst: number;
   posSgst: number;
+
+  // MISCELLANEOUS CHARGES
+  miscCharges: Array<{
+    id: string;
+    description: string;
+    amount: number;
+    gstRate: number;
+    cgst: number;
+    sgst: number;
+  }>;
+  totalMiscCharge: number;
+  miscCgst: number;
+  miscSgst: number;
+
+  // AGGREGATES
   cgst: number;
   sgst: number;
   grandTotal: number;
@@ -50,4 +64,3 @@ export interface InvoiceSnapshotV1 {
   // STATUS/PRESENTATION
   status: 'SETTLED';
 }
-

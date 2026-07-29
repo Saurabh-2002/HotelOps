@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import useSWR from 'swr';
 import { apiFetch, fetcher } from '@/lib/api';
-import { Receipt, FileText, CheckCircle2, Loader2, ArrowRight, UtensilsCrossed, Calendar, Search, ChevronLeft, ChevronRight, Printer } from 'lucide-react';
+import { Receipt, FileText, CheckCircle2, Loader2, ArrowRight, UtensilsCrossed, Calendar, Search, ChevronLeft, ChevronRight, Printer, Plus, Trash2, X } from 'lucide-react';
 import AlertDialog from '@/components/AlertDialog';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import { TableSkeleton } from '@/components/Skeletons';
@@ -70,6 +70,13 @@ export default function BillingPage() {
   const [alertConfig, setAlertConfig] = useState<{isOpen: boolean, title?: string, message: string, type: 'error'|'success'|'info'}>({ isOpen: false, message: '', type: 'info' });
   const [confirmConfig, setConfirmConfig] = useState<{isOpen: boolean, title: string, message: string, action?: string, id?: string}>({ isOpen: false, title: '', message: '' });
 
+  // Misc Charge State
+  const [showAddCharge, setShowAddCharge] = useState(false);
+  const [miscChargeDesc, setMiscChargeDesc] = useState('');
+  const [miscChargeAmt, setMiscChargeAmt] = useState('');
+  const [miscChargeGst, setMiscChargeGst] = useState('0.18');
+  const [addingCharge, setAddingCharge] = useState(false);
+
   const fetchBookings = async () => {
     try {
       setIsLoading(true);
@@ -123,6 +130,42 @@ export default function BillingPage() {
       setAlertConfig({ isOpen: true, title: 'Error', message: err.message || 'Failed to settle order', type: 'error' });
     } finally {
       setIsSettlingPos(false);
+    }
+  };
+
+  // Misc Charge handlers
+  const handleAddMiscCharge = async (bookingId: string) => {
+    if (!miscChargeDesc.trim() || !miscChargeAmt) return;
+    setAddingCharge(true);
+    try {
+      await apiFetch('/billing/misc-charge', {
+        method: 'POST',
+        body: JSON.stringify({
+          bookingId,
+          description: miscChargeDesc,
+          amount: parseFloat(miscChargeAmt),
+          gstRate: parseFloat(miscChargeGst),
+        }),
+      });
+      // Refresh invoice
+      setShowAddCharge(false);
+      setMiscChargeDesc('');
+      setMiscChargeAmt('');
+      setMiscChargeGst('0.18');
+      await handleGenerateInvoice(bookingId);
+    } catch (err: any) {
+      setAlertConfig({ isOpen: true, title: 'Error', message: err.message || 'Failed to add charge', type: 'error' });
+    } finally {
+      setAddingCharge(false);
+    }
+  };
+
+  const handleRemoveMiscCharge = async (chargeId: string, bookingId: string) => {
+    try {
+      await apiFetch(`/billing/misc-charge/${chargeId}`, { method: 'DELETE' });
+      await handleGenerateInvoice(bookingId);
+    } catch (err: any) {
+      setAlertConfig({ isOpen: true, title: 'Error', message: err.message || 'Failed to remove charge', type: 'error' });
     }
   };
 
@@ -742,20 +785,110 @@ export default function BillingPage() {
                       </tr>
                     ))}
 
+                    {/* Miscellaneous Charges */}
+                    {invoiceData.breakdown.miscCharges && invoiceData.breakdown.miscCharges.map((mc: any) => (
+                      <tr key={mc.id}>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <span className="font-semibold block text-slate-800">{mc.description}</span>
+                              <span className="text-xs text-slate-500">GST: {(mc.gstRate * 100).toFixed(0)}%</span>
+                            </div>
+                            {invoiceData.folio.status !== 'SETTLED' && (
+                              <button
+                                onClick={() => handleRemoveMiscCharge(mc.id, invoiceData.breakdown.bookingId)}
+                                className="text-red-400 hover:text-red-600 p-1 print:hidden"
+                                title="Remove charge"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-right">{Number(mc.amount).toFixed(2)}</td>
+                      </tr>
+                    ))}
+
+                    {/* Add Charge Button (only for open folios) */}
+                    {invoiceData.folio.status !== 'SETTLED' && (
+                      <tr className="print:hidden">
+                        <td colSpan={2} className="px-4 py-3">
+                          {showAddCharge ? (
+                            <div className="bg-slate-50 rounded-lg p-4 space-y-3 border border-slate-200">
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm font-semibold text-slate-700">Add Miscellaneous Charge</span>
+                                <button onClick={() => setShowAddCharge(false)} className="text-slate-400 hover:text-slate-600">
+                                  <X className="w-4 h-4" />
+                                </button>
+                              </div>
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <input
+                                  type="text"
+                                  placeholder="e.g. Property Damage, Laundry"
+                                  value={miscChargeDesc}
+                                  onChange={e => setMiscChargeDesc(e.target.value)}
+                                  className="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none sm:col-span-2"
+                                />
+                                <div className="grid grid-cols-2 gap-2">
+                                  <input
+                                    type="number"
+                                    placeholder="Amount"
+                                    value={miscChargeAmt}
+                                    onChange={e => setMiscChargeAmt(e.target.value)}
+                                    className="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                                    min="0"
+                                    step="0.01"
+                                  />
+                                  <select
+                                    value={miscChargeGst}
+                                    onChange={e => setMiscChargeGst(e.target.value)}
+                                    className="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+                                  >
+                                    <option value="0">No GST</option>
+                                    <option value="0.05">5% GST</option>
+                                    <option value="0.12">12% GST</option>
+                                    <option value="0.18">18% GST</option>
+                                    <option value="0.28">28% GST</option>
+                                  </select>
+                                </div>
+                              </div>
+                              <div className="flex justify-end">
+                                <button
+                                  onClick={() => handleAddMiscCharge(invoiceData.breakdown.bookingId)}
+                                  disabled={addingCharge || !miscChargeDesc.trim() || !miscChargeAmt}
+                                  className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  {addingCharge ? 'Adding...' : 'Add Charge'}
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => setShowAddCharge(true)}
+                              className="w-full py-2 border-2 border-dashed border-slate-300 rounded-lg text-sm text-slate-500 hover:border-blue-400 hover:text-blue-500 transition-colors flex items-center justify-center gap-2"
+                            >
+                              <Plus className="w-4 h-4" />
+                              Add Miscellaneous Charge (Damage, Laundry, etc.)
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    )}
+
                     <tr className="bg-slate-50 print:bg-transparent">
                       <td className="px-4 py-3 text-slate-600 font-medium text-right">Subtotal</td>
-                      <td className="px-4 py-3 text-right font-medium">₹{(Number(invoiceData.breakdown.totalRoomCharge) + Number(invoiceData.breakdown.totalPosCharge)).toFixed(2)}</td>
+                      <td className="px-4 py-3 text-right font-medium">₹{(Number(invoiceData.breakdown.totalRoomCharge) + Number(invoiceData.breakdown.totalPosCharge) + Number(invoiceData.breakdown.totalMiscCharge || 0)).toFixed(2)}</td>
                     </tr>
 
                     <tr>
                       <td className="px-4 py-2 text-slate-500 text-xs text-right">
-                        Room CGST
+                        Room CGST ({((invoiceData.breakdown.roomGstRate || 0) * 50).toFixed(0)}%)
                       </td>
                       <td className="px-4 py-2 text-right">{Number(invoiceData.breakdown.roomCgst).toFixed(2)}</td>
                     </tr>
                     <tr>
                       <td className="px-4 py-2 text-slate-500 text-xs text-right">
-                        Room SGST
+                        Room SGST ({((invoiceData.breakdown.roomGstRate || 0) * 50).toFixed(0)}%)
                       </td>
                       <td className="px-4 py-2 text-right">{Number(invoiceData.breakdown.roomSgst).toFixed(2)}</td>
                     </tr>
@@ -764,15 +897,32 @@ export default function BillingPage() {
                       <>
                         <tr>
                           <td className="px-4 py-2 text-slate-500 text-xs text-right">
-                            Restaurant CGST (2.5%)
+                            Restaurant CGST ({((invoiceData.breakdown.posGstRate || 0.05) * 50).toFixed(1)}%)
                           </td>
                           <td className="px-4 py-2 text-right">{Number(invoiceData.breakdown.posCgst).toFixed(2)}</td>
                         </tr>
                         <tr>
                           <td className="px-4 py-2 text-slate-500 text-xs text-right">
-                            Restaurant SGST (2.5%)
+                            Restaurant SGST ({((invoiceData.breakdown.posGstRate || 0.05) * 50).toFixed(1)}%)
                           </td>
                           <td className="px-4 py-2 text-right">{Number(invoiceData.breakdown.posSgst).toFixed(2)}</td>
+                        </tr>
+                      </>
+                    )}
+
+                    {Number(invoiceData.breakdown.totalMiscCharge || 0) > 0 && (
+                      <>
+                        <tr>
+                          <td className="px-4 py-2 text-slate-500 text-xs text-right">
+                            Misc. Charges CGST
+                          </td>
+                          <td className="px-4 py-2 text-right">{Number(invoiceData.breakdown.miscCgst).toFixed(2)}</td>
+                        </tr>
+                        <tr>
+                          <td className="px-4 py-2 text-slate-500 text-xs text-right">
+                            Misc. Charges SGST
+                          </td>
+                          <td className="px-4 py-2 text-right">{Number(invoiceData.breakdown.miscSgst).toFixed(2)}</td>
                         </tr>
                       </>
                     )}

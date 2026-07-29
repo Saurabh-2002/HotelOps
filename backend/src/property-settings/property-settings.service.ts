@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { IsString, IsOptional } from 'class-validator';
+import { IsString, IsOptional, IsNumber } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class UpdatePropertySettingsDto {
   @IsString() @IsOptional() propertyName?: string;
@@ -18,6 +19,11 @@ export class UpdatePropertySettingsDto {
   @IsString() @IsOptional() invoicePrefix?: string;
   @IsString() @IsOptional() timezone?: string;
   @IsString() @IsOptional() currency?: string;
+  // GST Configuration
+  @IsNumber() @IsOptional() @Type(() => Number) roomGstStandardRate?: number;
+  @IsNumber() @IsOptional() @Type(() => Number) roomGstPremiumRate?: number;
+  @IsNumber() @IsOptional() @Type(() => Number) roomGstThreshold?: number;
+  @IsNumber() @IsOptional() @Type(() => Number) restaurantGstRate?: number;
 }
 
 @Injectable()

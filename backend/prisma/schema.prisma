@@ -64,6 +64,7 @@ model Tenant {
   posOrders         PosOrder[]
   propertySettings  PropertySettings?
   roomTypes         RoomType[]
+  miscCharges       MiscCharge[]
 }
 
 model User {
@@ -116,6 +117,7 @@ model Booking {
   guestRecords   GuestRecord[]
   folios         Folio[]
   posOrders      PosOrder[]
+  miscCharges    MiscCharge[]
 
   @@index([tenantId])
 }
@@ -260,8 +262,28 @@ model PropertySettings {
   invoicePrefix     String   @default("INV-")
   timezone          String   @default("Asia/Kolkata")
   currency          String   @default("INR")
+  // GST Configuration
+  roomGstStandardRate  Decimal  @default(0.12) @db.Decimal(4, 4)
+  roomGstPremiumRate   Decimal  @default(0.18) @db.Decimal(4, 4)
+  roomGstThreshold     Decimal  @default(7500) @db.Decimal(10, 2)
+  restaurantGstRate    Decimal  @default(0.05) @db.Decimal(4, 4)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
+}
+
+model MiscCharge {
+  id          String   @id @default(uuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  bookingId   String
+  booking     Booking  @relation(fields: [bookingId], references: [id])
+  description String
+  amount      Decimal  @db.Decimal(10, 2)
+  gstRate     Decimal  @default(0.18) @db.Decimal(4, 4)
+  createdAt   DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([bookingId])
 }
 
 model RoomType {

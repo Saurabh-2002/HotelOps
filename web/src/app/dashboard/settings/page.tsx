@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { apiFetch } from '@/lib/api';
 import TimePicker from '@/components/TimePicker';
 import { useAuth } from '@/context/AuthContext';
-import { Building2, Utensils, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Building2, Utensils, CheckCircle2, AlertTriangle, Receipt } from 'lucide-react';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 
 interface PropertySettings {
@@ -23,6 +23,11 @@ interface PropertySettings {
   invoicePrefix: string;
   timezone: string;
   currency: string;
+  // GST Configuration
+  roomGstStandardRate?: number;
+  roomGstPremiumRate?: number;
+  roomGstThreshold?: number;
+  restaurantGstRate?: number;
 }
 
 export default function SettingsPage() {
@@ -229,6 +234,105 @@ export default function SettingsPage() {
           </button>
         </div>
       </form>
+
+      {/* Tax Configuration Section */}
+      {user?.role === 'OWNER' && (
+        <div className="bg-white border border-slate-200 p-4 sm:p-8 rounded-xl shadow-sm space-y-6 mt-8">
+          <div>
+            <div className="flex items-center gap-2 text-slate-800 mb-1">
+              <Receipt className="w-5 h-5" />
+              <h2 className="text-xl font-semibold">Tax Configuration (GST)</h2>
+            </div>
+            <p className="text-sm text-slate-500 mt-1">Configure GST rates and slab thresholds. These rates are used in billing calculations.</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700">Standard Room GST Rate</label>
+              <div className="relative">
+                <input 
+                  type="number" 
+                  step="0.01" min="0" max="1"
+                  value={settings?.roomGstStandardRate ?? 0.12} 
+                  onChange={e => setSettings(s => s ? {...s, roomGstStandardRate: parseFloat(e.target.value)} : null)}
+                  className="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-slate-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors shadow-sm text-sm"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">e.g. 0.12 = 12%</span>
+              </div>
+              <p className="text-xs text-slate-400">Applied to rooms at or below the threshold</p>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700">Premium Room GST Rate</label>
+              <div className="relative">
+                <input 
+                  type="number" 
+                  step="0.01" min="0" max="1"
+                  value={settings?.roomGstPremiumRate ?? 0.18} 
+                  onChange={e => setSettings(s => s ? {...s, roomGstPremiumRate: parseFloat(e.target.value)} : null)}
+                  className="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-slate-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors shadow-sm text-sm"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">e.g. 0.18 = 18%</span>
+              </div>
+              <p className="text-xs text-slate-400">Applied to rooms above the threshold</p>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700">Room Rate Threshold (₹)</label>
+              <input 
+                type="number" 
+                step="100" min="0"
+                value={settings?.roomGstThreshold ?? 7500} 
+                onChange={e => setSettings(s => s ? {...s, roomGstThreshold: parseFloat(e.target.value)} : null)}
+                className="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-slate-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors shadow-sm text-sm"
+              />
+              <p className="text-xs text-slate-400">Rooms ≤ this rate get Standard GST, above get Premium</p>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700">Restaurant GST Rate</label>
+              <div className="relative">
+                <input 
+                  type="number" 
+                  step="0.01" min="0" max="1"
+                  value={settings?.restaurantGstRate ?? 0.05} 
+                  onChange={e => setSettings(s => s ? {...s, restaurantGstRate: parseFloat(e.target.value)} : null)}
+                  className="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-slate-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors shadow-sm text-sm"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">e.g. 0.05 = 5%</span>
+              </div>
+              <p className="text-xs text-slate-400">For standalone restaurant orders (rooms above threshold use Premium rate)</p>
+            </div>
+          </div>
+
+          <div className="flex justify-end pt-6 border-t border-slate-100">
+            <button 
+              onClick={async () => {
+                setSaving(true);
+                setError('');
+                setSuccess('');
+                try {
+                  await apiFetch('/settings', {
+                    method: 'PATCH',
+                    body: JSON.stringify({
+                      roomGstStandardRate: settings?.roomGstStandardRate,
+                      roomGstPremiumRate: settings?.roomGstPremiumRate,
+                      roomGstThreshold: settings?.roomGstThreshold,
+                      restaurantGstRate: settings?.restaurantGstRate,
+                    }),
+                  });
+                  setSuccess('Tax configuration saved successfully!');
+                } catch (err: any) {
+                  setError(err.message || 'Failed to save tax configuration');
+                } finally {
+                  setSaving(false);
+                }
+              }}
+              disabled={saving}
+              className="w-full sm:w-auto px-5 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors focus:ring-4 focus:ring-blue-100 active:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {saving ? 'Saving...' : 'Save Tax Config'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Modules Section */}
       {user?.role === 'OWNER' && (
