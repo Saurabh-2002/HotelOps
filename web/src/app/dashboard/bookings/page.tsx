@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState, useMemo } from 'react';
+import { Suspense, useState, useMemo, useEffect } from 'react';
 import useSWR from 'swr';
 import { useSearchParams } from 'next/navigation';
 import { apiFetch, fetcher } from '@/lib/api';
@@ -72,14 +72,34 @@ function BookingsContent() {
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formData, setFormData] = useState({
+  
+  const defaultFormData = {
     roomId: '',
     checkInDate: '',
     checkOutDate: '',
     guests: [{ fullName: '', idType: 'Aadhaar', idNumber: '', phone: '', address: '', email: '' }],
     numAdults: 1,
     numChildren: 0,
-  });
+  };
+
+  const [formData, setFormData] = useState(defaultFormData);
+  const [isClient, setIsClient] = useState(false);
+
+  // Restore Booking form from localStorage
+  useEffect(() => {
+    setIsClient(true);
+    const savedForm = localStorage.getItem('booking_formData');
+    if (savedForm) {
+      try { setFormData(JSON.parse(savedForm)); } catch (e) {}
+    }
+  }, []);
+
+  // Save Booking form to localStorage
+  useEffect(() => {
+    if (isClient) {
+      localStorage.setItem('booking_formData', JSON.stringify(formData));
+    }
+  }, [formData, isClient]);
 
   // Derived: selected room and its type
   const selectedRoom = useMemo(() => rooms.find(r => r.id === formData.roomId), [rooms, formData.roomId]);
@@ -188,8 +208,11 @@ function BookingsContent() {
       });
       
       setIsModalOpen(false);
-      setFormData({ roomId: '', checkInDate: '', checkOutDate: '', guests: [{ fullName: '', idType: 'Aadhaar', idNumber: '', phone: '', address: '', email: '' }], numAdults: 1, numChildren: 0 });
-
+      setFormData(defaultFormData);
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('booking_formData');
+      }
+      setAlertConfig({ isOpen: true, title: 'Success', message: 'Booking created successfully!', type: 'success' });
     } catch (err: any) {
       setAlertConfig({ isOpen: true, title: 'Error', message: err.message || 'Failed to create booking', type: 'error' });
     } finally {

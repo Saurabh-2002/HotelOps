@@ -65,10 +65,10 @@ export function OrderContent({
           Assign To Room
         </label>
         <Select
-          value={selectedBookingId}
+          value={selectedBookingId || 'WALK_IN'}
           onChange={(e) => onBookingChange(e.target.value)}
         >
-          <option value="">Walk-in (Cash Order)</option>
+          <option value="WALK_IN">Walk-in (Cash Order)</option>
           {activeBookings.map((b) => (
             <option key={b.id} value={b.id}>
               Room {b.room.roomNumber} - {b.guestRecords[0]?.fullName}

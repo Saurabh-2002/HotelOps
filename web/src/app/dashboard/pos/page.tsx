@@ -2,7 +2,7 @@
 
 import useSWR from 'swr';
 import { apiFetch, fetcher } from '@/lib/api';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Pencil, Trash2, UtensilsCrossed } from 'lucide-react';
 import AlertDialog from '@/components/AlertDialog';
 import ConfirmDialog from '@/components/ConfirmDialog';
@@ -66,9 +66,31 @@ export default function PosPage() {
 
   // Terminal State
   const [orderItems, setOrderItems] = useState<OrderItemSelection[]>([]);
-  const [selectedBookingId, setSelectedBookingId] = useState<string>('');
+  const [selectedBookingId, setSelectedBookingId] = useState<string>('WALK_IN');
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string>('All');
+  const [isClient, setIsClient] = useState(false);
+
+  // Restore POS cart from localStorage
+  useEffect(() => {
+    setIsClient(true);
+    const savedCart = localStorage.getItem('pos_cart');
+    if (savedCart) {
+      try { setOrderItems(JSON.parse(savedCart)); } catch (e) {}
+    }
+    const savedBookingId = localStorage.getItem('pos_bookingId');
+    if (savedBookingId) {
+      setSelectedBookingId(savedBookingId);
+    }
+  }, []);
+
+  // Save POS cart to localStorage
+  useEffect(() => {
+    if (isClient) {
+      localStorage.setItem('pos_cart', JSON.stringify(orderItems));
+      localStorage.setItem('pos_bookingId', selectedBookingId);
+    }
+  }, [orderItems, selectedBookingId, isClient]);
 
   // Customization Modal State
   const [customizingItem, setCustomizingItem] = useState<MenuItem | null>(null);
@@ -290,10 +312,12 @@ export default function PosPage() {
     if (orderItems.length === 0) return;
     setIsSubmittingOrder(true);
     try {
+      const finalBookingId = selectedBookingId === 'WALK_IN' ? null : selectedBookingId;
+      
       const order = await apiFetch('/pos/orders', {
         method: 'POST',
         body: JSON.stringify({
-          bookingId: selectedBookingId || null,
+          bookingId: finalBookingId,
           items: orderItems.map(item => ({
             menuItemId: item.menuItem.id,
             quantity: item.quantity,
@@ -310,14 +334,18 @@ export default function PosPage() {
       await apiFetch(`/pos/orders/${order.id}/settle`, {
         method: 'POST',
         body: JSON.stringify({
-          method: selectedBookingId ? 'ROOM_POST' : 'CASH',
-          bookingId: selectedBookingId || undefined
+          method: finalBookingId ? 'ROOM_POST' : 'CASH',
+          bookingId: finalBookingId || undefined
         })
       });
 
-      setAlertConfig({ isOpen: true, title: 'Success', message: selectedBookingId ? 'KOT Generated & Posted to Room!' : 'KOT Generated & Settled as Cash!', type: 'success' });
+      setAlertConfig({ isOpen: true, title: 'Success', message: finalBookingId ? 'KOT Generated & Posted to Room!' : 'KOT Generated & Settled as Cash!', type: 'success' });
       setOrderItems([]);
-      setSelectedBookingId('');
+      setSelectedBookingId('WALK_IN');
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('pos_cart');
+        localStorage.removeItem('pos_bookingId');
+      }
     } catch (err: any) {
       setAlertConfig({ isOpen: true, title: 'Error', message: err.message || 'Failed to process order', type: 'error' });
     } finally {
