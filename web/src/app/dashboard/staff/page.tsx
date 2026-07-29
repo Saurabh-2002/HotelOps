@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useAuth } from '@/context/AuthContext';
 import useSWR from 'swr';
 import { apiFetch, fetcher } from '@/lib/api';
 import { Plus, Pencil, Trash2, Shield, User } from 'lucide-react';
@@ -30,6 +31,7 @@ const AVAILABLE_ROLES = [
 ];
 
 export default function StaffPage() {
+  const { user, updateUser } = useAuth();
   const { data: staffData, error, mutate } = useSWR('/staff', fetcher);
   const isLoading = !staffData && !error;
   const staff: StaffMember[] = staffData || [];
@@ -102,6 +104,15 @@ export default function StaffPage() {
           rollbackOnError: true,
           revalidate: true,
         });
+
+        // Update local storage if the user edited their own profile
+        try {
+          if (user && user.id === editingStaff.id) {
+            updateUser({ name: payload.name, email: payload.email });
+          }
+        } catch (e) {
+          console.error('Failed to update local user state', e);
+        }
 
         setAlertConfig({ isOpen: true, title: 'Success', message: 'Staff updated successfully!', type: 'success' });
       } else {
