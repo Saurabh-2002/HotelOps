@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import useSWR from 'swr';
+import { useAuth } from '@/context/AuthContext';
 import { apiFetch, fetcher } from '@/lib/api';
 import { Loader2, Users, Calendar, CheckCircle2, XCircle } from 'lucide-react';
 import { TableSkeleton } from '@/components/Skeletons';
@@ -25,6 +26,9 @@ type AttendanceRecord = {
 };
 
 export function AttendanceTab() {
+  const { user } = useAuth();
+  const isManager = user?.role === 'OWNER' || user?.role === 'MANAGER';
+
   const [date, setDate] = useState(() => {
     const today = new Date();
     return today.toISOString().split('T')[0];
@@ -94,7 +98,9 @@ export function AttendanceTab() {
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
         <div>
           <h3 className="text-2xl font-bold text-slate-800">Daily Attendance</h3>
-          <p className="text-slate-500 text-sm mt-1">Manage staff attendance records.</p>
+          <p className="text-slate-500 text-sm mt-1">
+            {isManager ? 'Manage staff attendance records.' : 'View your daily attendance.'}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <Calendar className="w-5 h-5 text-slate-400" />

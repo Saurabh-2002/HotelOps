@@ -140,7 +140,9 @@ export function LeaveTab() {
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
         <div>
           <h3 className="text-2xl font-bold text-slate-800">Leave Management</h3>
-          <p className="text-slate-500 text-sm mt-1">Manage staff leave requests.</p>
+          <p className="text-slate-500 text-sm mt-1">
+            {isManager ? 'Manage staff leave requests.' : 'Request and track your leave.'}
+          </p>
         </div>
         {user?.role !== 'OWNER' && (
           <Button onClick={() => setIsModalOpen(true)}>

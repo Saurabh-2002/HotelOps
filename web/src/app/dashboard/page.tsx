@@ -45,9 +45,9 @@ export default function DashboardOverview() {
         </div>
       </div>
 
-      {/* Operational Metrics (Front Desk) */}
+      {/* Operational Metrics */}
       <section>
-        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Front Desk Operations</h4>
+        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Operational Metrics</h4>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {user?.activeModules?.includes('HOTEL') && (
               <>
