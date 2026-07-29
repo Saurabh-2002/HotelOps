@@ -8,10 +8,14 @@ import { UserRole } from '@prisma/client';
 export class StaffService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(tenantId: string) {
+  async findAll(user: any) {
+    const isManager = user.role === 'OWNER' || user.role === 'MANAGER';
     const users = await this.prisma.withBypassRls(async (tx) => {
       return tx.user.findMany({
-        where: { tenantId },
+        where: { 
+          tenantId: user.tenantId,
+          ...(isManager ? {} : { id: user.id })
+        },
         orderBy: { createdAt: 'desc' },
       });
     });

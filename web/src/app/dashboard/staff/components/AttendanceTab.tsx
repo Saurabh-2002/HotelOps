@@ -56,19 +56,24 @@ export function AttendanceTab() {
       });
       
       mutateAttendance(async (currentData: any) => {
-        await promise;
-        return undefined; // Let revalidate fetch the actual updated data
+        const updatedRecord = await promise;
+        const current = currentData || [];
+        const exists = current.find((r: AttendanceRecord) => r.userId === userId);
+        if (exists) {
+          return current.map((r: AttendanceRecord) => r.userId === userId ? updatedRecord : r);
+        }
+        return [...current, updatedRecord];
       }, {
         optimisticData: (currentData: any) => {
-          if (!currentData) return currentData;
-          const exists = currentData.find((r: AttendanceRecord) => r.userId === userId);
+          const current = currentData || [];
+          const exists = current.find((r: AttendanceRecord) => r.userId === userId);
           if (exists) {
-            return currentData.map((r: AttendanceRecord) => r.userId === userId ? { ...r, status } : r);
+            return current.map((r: AttendanceRecord) => r.userId === userId ? { ...r, status } : r);
           }
-          return [...currentData, payload];
+          return [...current, payload];
         },
         rollbackOnError: true,
-        revalidate: true
+        revalidate: false
       });
       
       setSuccess('Attendance updated successfully');

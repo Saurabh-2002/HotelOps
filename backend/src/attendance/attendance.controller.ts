@@ -11,17 +11,19 @@ export class AttendanceController {
   constructor(private readonly attendanceService: AttendanceService) {}
 
   @Get()
-  @Roles('OWNER', 'MANAGER')
   findByDate(@Request() req, @Query('date') date: string) {
     if (!date) {
       throw new BadRequestException('Date query parameter is required');
     }
-    return this.attendanceService.findByDate(req.user.tenantId, date);
+    return this.attendanceService.findByDate(req.user, date);
   }
 
   @Post()
-  @Roles('OWNER', 'MANAGER')
   markAttendance(@Request() req, @Body() dto: MarkAttendanceDto) {
+    const isManager = req.user.role === 'OWNER' || req.user.role === 'MANAGER';
+    if (!isManager && dto.userId !== req.user.id) {
+      throw new BadRequestException('You can only mark your own attendance');
+    }
     return this.attendanceService.markAttendance(req.user.tenantId, dto);
   }
 }

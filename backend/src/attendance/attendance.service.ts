@@ -6,11 +6,16 @@ import { MarkAttendanceDto } from './dto/attendance.dto';
 export class AttendanceService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findByDate(tenantId: string, dateStr: string) {
+  async findByDate(user: any, dateStr: string) {
     const date = new Date(dateStr);
+    const isManager = user.role === 'OWNER' || user.role === 'MANAGER';
     return this.prisma.withBypassRls(async (tx) => {
       return tx.attendance.findMany({
-        where: { tenantId, date },
+        where: { 
+          tenantId: user.tenantId, 
+          date,
+          ...(isManager ? {} : { userId: user.id })
+        },
         include: { user: { select: { name: true, avatarUrl: true, role: true } } },
       });
     });
