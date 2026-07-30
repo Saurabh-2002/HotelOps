@@ -18,9 +18,15 @@ export class AttendanceController {
     return this.attendanceService.findByDate(req.user, date);
   }
 
+  @Get('summary')
+  getSummary(@Request() req, @Query('range') range: string) {
+    return this.attendanceService.getAttendanceSummary(req.user, range || 'month');
+  }
+
   @Post()
   @Roles('OWNER', 'MANAGER')
   markAttendance(@Request() req, @Body() dto: MarkAttendanceDto) {
     return this.attendanceService.markAttendance(req.user.tenantId, dto);
   }
 }
+
